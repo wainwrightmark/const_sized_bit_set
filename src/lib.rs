@@ -1,8 +1,16 @@
 use std::ops::Shr;
 
+#[cfg(any(test, feature = "serde"))]
+use serde::{Deserialize, Serialize};
+
 #[must_use]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct BitSet<const WORDS: usize>([u64; WORDS]);
+#[cfg_attr(any(test, feature = "serde"), derive(Serialize, Deserialize))]
+pub struct BitSet<const WORDS: usize>(
+
+    #[cfg_attr(any(test, feature = "serde"),serde(with = "serde_arrays"))]
+    [u64; WORDS]
+);
 
 impl<const WORDS: usize> Default for BitSet<WORDS> {
     fn default() -> Self {
@@ -455,5 +463,37 @@ pub mod tests {
         let negated_evens = evens.negate();
 
         assert_eq!(negated_evens, odds);
+    }
+
+    #[test]
+    fn test_serde_empty() {
+        use serde_test::*;
+        let map = BitSet::<4>::EMPTY;
+
+        assert_tokens(&map, &[
+            Token::NewtypeStruct { name: "BitSet", },
+            Token::Tuple { len: 4, },
+            Token::U64(0),
+            Token::U64(0),
+            Token::U64(0),
+            Token::U64(0),
+            Token::TupleEnd
+        ]);
+    }
+
+    #[test]
+    fn test_serde() {
+        use serde_test::*;
+        let map = BitSet::<4>::from_fn(|x| x%2 == ((x / 64) % 2));
+
+        assert_tokens(&map, &[
+            Token::NewtypeStruct { name: "BitSet", },
+            Token::Tuple { len: 4, },
+            Token::U64(6148914691236517205),
+            Token::U64(12297829382473034410),
+            Token::U64(6148914691236517205),
+            Token::U64(12297829382473034410),
+            Token::TupleEnd
+        ]);
     }
 }
