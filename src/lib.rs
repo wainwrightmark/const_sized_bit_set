@@ -81,8 +81,8 @@ impl<const WORDS: usize> BitSet<WORDS> {
     /// PANICS if index is out of range
     #[inline]
     pub fn set_bit(&mut self, index: usize, bit: bool) {
-        let word = index / 64;
-        let shift = (index % 64) as u32;
+        let word = index / u64::BITS as usize;
+        let shift = (index % u64::BITS as usize) as u32;
 
         if bit {
             self.0[word] |= 1u64 << shift;
@@ -96,8 +96,8 @@ impl<const WORDS: usize> BitSet<WORDS> {
     #[must_use]
     #[inline]
     pub const fn with_bit_set(&self, index: usize, bit: bool) -> Self {
-        let word = index / 64;
-        let shift = (index % 64) as u32;
+        let word = index / u64::BITS as usize;
+        let shift = (index % u64::BITS as usize) as u32;
 
         let inner = if bit {
             self.0[word] | (1u64 << shift)
@@ -114,8 +114,8 @@ impl<const WORDS: usize> BitSet<WORDS> {
     #[must_use]
     #[inline]
     pub const fn get_bit(&self, index: usize) -> bool {
-        let word_index = index / 64;
-        let shift = (index % 64) as u32;
+        let word_index = index / u64::BITS as usize;
+        let shift = (index % u64::BITS as usize) as u32;
 
         if word_index >= WORDS {
             return false;
@@ -287,7 +287,7 @@ pub mod tests {
     use crate::BitSet;
 
     #[test]
-    pub fn from_fn() {
+    pub fn from_fn_4() {
         let evens = BitSet::<4>::from_fn(|x| x % 2 == 0);
 
         assert_eq!(128, evens.count());
@@ -301,7 +301,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn from_iter() {
+    pub fn from_iter_4() {
         let expected: Vec<usize> = (0..52usize).map(|x| x * 5).collect();
 
         let set = BitSet::<4>::from_iter(expected.iter().cloned());
@@ -318,7 +318,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn is_empty() {
+    pub fn is_empty_4() {
         let mut my_set = BitSet::<4>::EMPTY;
 
         assert!(my_set.is_empty());
@@ -333,7 +333,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn from_inner() {
+    pub fn from_inner_4() {
         let evens = BitSet::<4>::from_fn(|x| x % 2 == 0);
         let inner = evens.into_inner();
 
@@ -348,7 +348,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn get_bit() {
+    pub fn get_bit_4() {
         let my_set = BitSet::<4>::from_fn(|x| x % 2 == 0);
 
         for x in 0..260 {
@@ -359,7 +359,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn set_bit() {
+    pub fn set_bit_4() {
         let mut my_set = BitSet::<4>::from_fn(|x| x % 2 == 0);
         my_set.set_bit(1, true);
         my_set.set_bit(65, true);
@@ -380,7 +380,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn with_bit_set() {
+    pub fn with_bit_set_4() {
         let my_set = BitSet::<4>::from_fn(|x| x % 2 == 0)
             .with_bit_set(1, true)
             .with_bit_set(65, true)
@@ -400,7 +400,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn union(){
+    pub fn union_4(){
         let multiples_of_2 = BitSet::<4>::from_fn(|x| x % 2 == 0);
         let multiples_of_5 = BitSet::<4>::from_fn(|x| x % 5 == 0);
         let multiples_of_2_or_5 = BitSet::<4>::from_fn(|x| x % 2 == 0 || x % 5 == 0);
@@ -412,7 +412,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn intersect() {
+    pub fn intersect_4() {
         let multiples_of_2 = BitSet::<4>::from_fn(|x| x % 2 == 0);
         let multiples_of_5 = BitSet::<4>::from_fn(|x| x % 5 == 0);
         let multiples_of_10 = BitSet::<4>::from_fn(|x| x % 10 == 0);
@@ -443,7 +443,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn symmetric_difference() {
+    pub fn symmetric_difference_4() {
         let multiples_of_2 = BitSet::<4>::from_fn(|x| x % 2 == 0);
         let multiples_of_5 = BitSet::<4>::from_fn(|x| x % 5 == 0);
 
@@ -456,7 +456,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn negate() {
+    pub fn negate_4() {
         let evens = BitSet::<4>::from_fn(|x| x % 2 == 0);
         let odds = BitSet::<4>::from_fn(|x| x % 2 == 1);
 
@@ -466,7 +466,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_serde_empty() {
+    fn test_serde_empty_4() {
         use serde_test::*;
         let map = BitSet::<4>::EMPTY;
 
@@ -482,7 +482,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_serde() {
+    fn test_serde_4() {
         use serde_test::*;
         let map = BitSet::<4>::from_fn(|x| x%2 == ((x / 64) % 2));
 
@@ -493,6 +493,211 @@ pub mod tests {
             Token::U64(12297829382473034410),
             Token::U64(6148914691236517205),
             Token::U64(12297829382473034410),
+            Token::TupleEnd
+        ]);
+    }
+
+    #[test]
+    pub fn from_fn_1() {
+        let evens = BitSet::<1>::from_fn(|x| x % 2 == 0);
+
+        assert_eq!(32, evens.count());
+        let iter = evens.into_iter();
+        assert_eq!(iter.count(), 32);
+
+        let items: Vec<usize> = iter.collect();
+        let expected: Vec<usize> = (0..32usize).map(|x| x * 2).collect();
+
+        assert_eq!(items, expected);
+    }
+
+    #[test]
+    pub fn from_iter_1() {
+        let expected: Vec<usize> = (0..13usize).map(|x| x * 5).collect();
+
+        let set = BitSet::<1>::from_iter(expected.iter().cloned());
+
+        assert_eq!(13, set.count());
+
+        let iter = set.into_iter();
+        assert_eq!(iter.count(), 13);
+        assert_eq!(iter.size_hint(), (13, Some(13)));
+
+        let items: Vec<usize> = iter.collect();
+
+        assert_eq!(items, expected);
+    }
+
+    #[test]
+    pub fn is_empty_1() {
+        let mut my_set = BitSet::<1>::EMPTY;
+
+        assert!(my_set.is_empty());
+
+        my_set.set_bit(63, true);
+
+        assert!(!my_set.is_empty());
+
+        my_set.set_bit(63, false);
+
+        assert!(my_set.is_empty());
+    }
+
+    #[test]
+    pub fn from_inner_1() {
+        let evens = BitSet::<1>::from_fn(|x| x % 2 == 0);
+        let inner = evens.into_inner();
+
+        assert_eq!(inner, [6148914691236517205; 1]);
+        let again = BitSet::from_inner(inner);
+
+        assert_eq!(evens, again);
+
+        let eq = evens.eq(&again);
+
+        assert!(eq);
+    }
+
+    #[test]
+    pub fn get_bit_1() {
+        let my_set = BitSet::<1>::from_fn(|x| x % 2 == 0);
+
+        for x in 0..70 {
+            let value = my_set.get_bit(x);
+
+            assert_eq!(x % 2 == 0 && x < 64, value);
+        }
+    }
+
+    #[test]
+    pub fn set_bit_1() {
+        let mut my_set = BitSet::<1>::from_fn(|x| x % 2 == 0);
+        my_set.set_bit(1, true);
+        my_set.set_bit(33, true);
+
+        my_set.set_bit(2, false);
+        my_set.set_bit(32, false);
+
+        let mut expected: BTreeSet<usize> = (0..32usize).map(|x| x * 2).collect();
+        expected.insert(1);
+        expected.insert(33);
+        expected.remove(&2);
+        expected.remove(&32);
+
+        let actual: Vec<_> = my_set.into_iter().collect();
+        let expected: Vec<_> = expected.into_iter().collect();
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    pub fn with_bit_set_1() {
+        let my_set = BitSet::<1>::from_fn(|x| x % 2 == 0)
+            .with_bit_set(1, true)
+            .with_bit_set(33, true)
+            .with_bit_set(2, false)
+            .with_bit_set(32, false);
+
+        let mut expected: BTreeSet<usize> = (0..32usize).map(|x| x * 2).collect();
+        expected.insert(1);
+        expected.insert(33);
+        expected.remove(&2);
+        expected.remove(&32);
+
+        let actual: Vec<_> = my_set.into_iter().collect();
+        let expected: Vec<_> = expected.into_iter().collect();
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    pub fn union_1(){
+        let multiples_of_2 = BitSet::<1>::from_fn(|x| x % 2 == 0);
+        let multiples_of_5 = BitSet::<1>::from_fn(|x| x % 5 == 0);
+        let multiples_of_2_or_5 = BitSet::<1>::from_fn(|x| x % 2 == 0 || x % 5 == 0);
+
+        let union = multiples_of_2.union(&multiples_of_5);
+
+        assert_eq!(multiples_of_2_or_5, union);
+
+    }
+
+    #[test]
+    pub fn intersect_1() {
+        let multiples_of_2 = BitSet::<1>::from_fn(|x| x % 2 == 0);
+        let multiples_of_5 = BitSet::<1>::from_fn(|x| x % 5 == 0);
+        let multiples_of_10 = BitSet::<1>::from_fn(|x| x % 10 == 0);
+        let multiples_of_6 = BitSet::<1>::from_fn(|x| x % 6 == 0);
+
+        let intersection = multiples_of_2.intersect(&multiples_of_5);
+
+        assert_eq!(multiples_of_10, intersection);
+
+        assert!(intersection.is_subset(&multiples_of_2));
+        assert!(intersection.is_subset(&multiples_of_5));
+        assert!(intersection.is_subset(&multiples_of_10));
+
+        assert!(!intersection.is_superset(&multiples_of_2));
+        assert!(!intersection.is_superset(&multiples_of_5));
+        assert!(intersection.is_superset(&multiples_of_10));
+
+        assert!(!multiples_of_2.is_subset(&intersection));
+        assert!(!multiples_of_5.is_subset(&intersection));
+        assert!(intersection.is_subset(&intersection));
+
+        assert!(multiples_of_2.is_superset(&intersection));
+        assert!(multiples_of_5.is_superset(&intersection));
+        assert!(intersection.is_superset(&intersection));
+
+        assert!(!intersection.is_subset(&multiples_of_6));
+        assert!(!intersection.is_superset(&multiples_of_6));
+    }
+
+    #[test]
+    pub fn symmetric_difference_1() {
+        let multiples_of_2 = BitSet::<1>::from_fn(|x| x % 2 == 0);
+        let multiples_of_5 = BitSet::<1>::from_fn(|x| x % 5 == 0);
+
+        let multiples_of_2_or_5_but_not_10 =
+            BitSet::<1>::from_fn(|x| x % 10 != 0 && (x % 2 == 0 || x % 5 == 0));
+
+        let sym_diff = multiples_of_2.symmetric_difference(&multiples_of_5);
+
+        assert_eq!(multiples_of_2_or_5_but_not_10, sym_diff);
+    }
+
+    #[test]
+    pub fn negate_1() {
+        let evens = BitSet::<1>::from_fn(|x| x % 2 == 0);
+        let odds = BitSet::<1>::from_fn(|x| x % 2 == 1);
+
+        let negated_evens = evens.negate();
+
+        assert_eq!(negated_evens, odds);
+    }
+
+    #[test]
+    fn test_serde_empty_1() {
+        use serde_test::*;
+        let map = BitSet::<1>::EMPTY;
+
+        assert_tokens(&map, &[
+            Token::NewtypeStruct { name: "BitSet", },
+            Token::Tuple { len: 1, },
+            Token::U64(0),
+            Token::TupleEnd
+        ]);
+    }
+
+    #[test]
+    fn test_serde_1() {
+        use serde_test::*;
+        let map = BitSet::<1>::from_fn(|x| x%2 == 0);
+
+        assert_tokens(&map, &[
+            Token::NewtypeStruct { name: "BitSet", },
+            Token::Tuple { len: 1, },
+            Token::U64(6148914691236517205),
             Token::TupleEnd
         ]);
     }
