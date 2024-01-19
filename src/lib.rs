@@ -4,7 +4,7 @@
 
 #[cfg(any(test, feature = "serde"))]
 use serde::{Deserialize, Serialize};
-use std::ops::Shr;
+use core::ops::Shr;
 
 #[must_use]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
