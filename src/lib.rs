@@ -4,7 +4,7 @@
 
 #[cfg(any(test, feature = "serde"))]
 use serde::{Deserialize, Serialize};
-use core::ops::Shr;
+use core::{ops::Shr, iter::FusedIterator};
 
 #[must_use]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -246,6 +246,7 @@ pub struct BitSetIter<const WORDS: usize> { //TODO use more efficient iterator i
 }
 
 impl<const WORDS: usize> ExactSizeIterator for BitSetIter<WORDS> {}
+impl<const WORDS: usize> FusedIterator for BitSetIter<WORDS> {}
 
 impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
     type Item = usize;
@@ -266,6 +267,14 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
         Self: Sized,
     {
         self.inner.count() as usize
+    }
+}
+
+impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        let last = self.inner.last()?;
+        self.inner.set_bit(last, false);
+        Some(last)
     }
 }
 
@@ -302,6 +311,23 @@ pub mod tests {
         assert_eq!(iter.size_hint(), (52, Some(52)));
 
         let items: Vec<usize> = iter.collect();
+
+        assert_eq!(items, expected);
+    }
+
+    #[test]
+    pub fn reverse_iter_4() {
+        let expected: Vec<usize> = (0..52usize).map(|x| x * 5).rev().collect();
+
+        let set = BitSet::<4>::from_iter(expected.iter().cloned());
+
+        assert_eq!(52, set.count());
+
+        let iter = set.into_iter();
+        assert_eq!(iter.count(), 52);
+        assert_eq!(iter.size_hint(), (52, Some(52)));
+
+        let items: Vec<usize> = iter.rev().collect();
 
         assert_eq!(items, expected);
     }
@@ -557,6 +583,23 @@ pub mod tests {
         assert_eq!(iter.size_hint(), (13, Some(13)));
 
         let items: Vec<usize> = iter.collect();
+
+        assert_eq!(items, expected);
+    }
+
+    #[test]
+    pub fn reverse_iter_1() {
+        let expected: Vec<usize> = (0..13usize).map(|x| x * 5).rev().collect();
+
+        let set = BitSet::<1>::from_iter(expected.iter().cloned());
+
+        assert_eq!(13, set.count());
+
+        let iter = set.into_iter();
+        assert_eq!(iter.count(), 13);
+        assert_eq!(iter.size_hint(), (13, Some(13)));
+
+        let items: Vec<usize> = iter.rev().collect();
 
         assert_eq!(items, expected);
     }
