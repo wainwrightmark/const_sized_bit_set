@@ -2,9 +2,9 @@
 #![allow(warnings, dead_code, unused_imports, unused_mut)]
 #![warn(clippy::pedantic)]
 
+use core::{iter::FusedIterator, ops::Shr};
 #[cfg(any(test, feature = "serde"))]
 use serde::{Deserialize, Serialize};
-use core::{ops::Shr, iter::FusedIterator};
 
 #[must_use]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -233,15 +233,14 @@ impl<const WORDS: usize> IntoIterator for BitSet<WORDS> {
     type IntoIter = BitSetIter<WORDS>;
 
     fn into_iter(self) -> Self::IntoIter {
-        BitSetIter {
-            inner: self,
-        }
+        BitSetIter { inner: self }
     }
 }
 
 #[must_use]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct BitSetIter<const WORDS: usize> { //TODO use more efficient iterator if size is greater than one
+pub struct BitSetIter<const WORDS: usize> {
+    //TODO use more efficient iterator if size is greater than one
     inner: BitSet<WORDS>,
 }
 
@@ -252,8 +251,21 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
     type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let first = self.inner.first()?;
-        self.inner.set_bit(first, false);
+        let mut first: usize;
+        let mut tz: u32;
+        let mut word = 0;
+        loop {
+            if word >= WORDS {
+                return None;
+            }
+            tz = self.inner.0[word].trailing_zeros();
+            if tz < u64::BITS {
+                first = tz as usize + (word * (u64::BITS as usize));
+                break;
+            }
+            word += 1;
+        }
+        self.inner.0[word] &= !(1u64 << tz);
         Some(first)
     }
 
@@ -272,8 +284,21 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
 
 impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        let last = self.inner.last()?;
-        self.inner.set_bit(last, false);
+        let mut last: usize;
+
+        let mut word = WORDS;
+        let mut index: u32;
+        loop {
+            word = word.checked_sub(1)?;
+
+            if let Some(i) = (u64::BITS - 1).checked_sub(self.inner.0[word].leading_zeros())
+            {
+                index = i;
+                last = index as usize + (word * (u64::BITS as usize));
+                break;
+            }
+        }
+        self.inner.0[word] &= !(1u64 << index);
         Some(last)
     }
 }
