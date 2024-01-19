@@ -234,17 +234,15 @@ impl<const WORDS: usize> IntoIterator for BitSet<WORDS> {
 
     fn into_iter(self) -> Self::IntoIter {
         BitSetIter {
-            data: self.0,
-            skip: 0,
+            inner: self,
         }
     }
 }
 
 #[must_use]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct BitSetIter<const WORDS: usize> {
-    data: [u64; WORDS],
-    skip: u32,
+pub struct BitSetIter<const WORDS: usize> { //TODO use more efficient iterator if size is greater than one
+    inner: BitSet<WORDS>,
 }
 
 impl<const WORDS: usize> ExactSizeIterator for BitSetIter<WORDS> {}
@@ -253,23 +251,9 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
     type Item = usize;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let mut word_index = self.skip / u64::BITS;
-        let mut word: &mut u64;
-        loop {
-            word = self.data.get_mut(word_index as usize)?;
-            if *word != 0 {
-                break;
-            }
-            word_index += 1;
-            self.skip = word_index * u64::BITS;
-        }
-
-        let tz = word.trailing_zeros();
-        let r = self.skip + tz;
-        *word = word.shr(tz + 1);
-        self.skip = r + 1;
-
-        Some(r as usize)
+        let first = self.inner.first()?;
+        self.inner.set_bit(first, false);
+        Some(first)
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
@@ -281,12 +265,7 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
     where
         Self: Sized,
     {
-        let word_index = (self.skip / u64::BITS) as usize;
-        let mut total = 0;
-        for x in word_index..WORDS {
-            total += self.data[x].count_ones();
-        }
-        total as usize
+        self.inner.count() as usize
     }
 }
 
