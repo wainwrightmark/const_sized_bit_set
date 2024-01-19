@@ -1,15 +1,16 @@
-use std::ops::Shr;
+#![cfg_attr(not(any(test, feature = "std")), no_std)]
+#![allow(warnings, dead_code, unused_imports, unused_mut)]
+#![warn(clippy::pedantic)]
 
 #[cfg(any(test, feature = "serde"))]
 use serde::{Deserialize, Serialize};
+use std::ops::Shr;
 
 #[must_use]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(any(test, feature = "serde"), derive(Serialize, Deserialize))]
 pub struct BitSet<const WORDS: usize>(
-
-    #[cfg_attr(any(test, feature = "serde"),serde(with = "serde_arrays"))]
-    [u64; WORDS]
+    #[cfg_attr(any(test, feature = "serde"), serde(with = "serde_arrays"))] [u64; WORDS],
 );
 
 impl<const WORDS: usize> Default for BitSet<WORDS> {
@@ -58,15 +59,12 @@ impl<const WORDS: usize> BitSet<WORDS> {
     #[must_use]
     #[inline]
     pub const fn eq(&self, rhs: &Self) -> bool {
-        let mut index = 0;
-        loop {
-            if index >= WORDS {
-                break;
-            }
-            if self.0[index] != rhs.0[index] {
+        let mut word = 0;
+        while word < WORDS {
+            if self.0[word] != rhs.0[word] {
                 return false;
             }
-            index += 1;
+            word += 1;
         }
         return true;
     }
@@ -128,14 +126,10 @@ impl<const WORDS: usize> BitSet<WORDS> {
     #[must_use]
     pub const fn count(&self) -> u32 {
         let mut count: u32 = 0;
-        let mut index = 0;
-        loop {
-            if index >= WORDS {
-                break;
-            }
-
-            count += self.0[index].count_ones();
-            index += 1;
+        let mut word = 0;
+        while word < WORDS {
+            count += self.0[word].count_ones();
+            word += 1;
         }
 
         count
@@ -144,14 +138,11 @@ impl<const WORDS: usize> BitSet<WORDS> {
     #[must_use]
     pub const fn intersect(&self, rhs: &Self) -> Self {
         let mut arr = self.0;
-        let mut index = 0;
-        loop {
-            if index >= WORDS {
-                break;
-            }
-            let r = rhs.0[index];
-            arr[index] &= r;
-            index += 1;
+        let mut word = 0;
+        while word < WORDS {
+            let r = rhs.0[word];
+            arr[word] &= r;
+            word += 1;
         }
 
         Self(arr)
@@ -160,14 +151,11 @@ impl<const WORDS: usize> BitSet<WORDS> {
     #[must_use]
     pub const fn union(&self, rhs: &Self) -> Self {
         let mut arr = self.0;
-        let mut index = 0;
-        loop {
-            if index >= WORDS {
-                break;
-            }
-            let r = rhs.0[index];
-            arr[index] |= r;
-            index += 1;
+        let mut word = 0;
+        while word < WORDS {
+            let r = rhs.0[word];
+            arr[word] |= r;
+            word += 1;
         }
 
         Self(arr)
@@ -187,14 +175,11 @@ impl<const WORDS: usize> BitSet<WORDS> {
     #[must_use]
     pub const fn symmetric_difference(&self, rhs: &Self) -> Self {
         let mut arr = self.0;
-        let mut index = 0;
-        loop {
-            if index >= WORDS {
-                break;
-            }
-            let r = rhs.0[index];
-            arr[index] ^= r;
-            index += 1;
+        let mut word = 0;
+        while word < WORDS {
+            let r = rhs.0[word];
+            arr[word] ^= r;
+            word += 1;
         }
 
         Self(arr)
@@ -203,17 +188,42 @@ impl<const WORDS: usize> BitSet<WORDS> {
     #[must_use]
     pub const fn negate(&self) -> Self {
         let mut arr = [0; WORDS];
-        let mut index = 0;
-        loop {
-            if index >= WORDS {
-                break;
-            }
-
-            arr[index] = !self.0[index];
-            index += 1;
+        let mut word = 0;
+        while word < WORDS {
+            arr[word] = !self.0[word];
+            word += 1;
         }
 
         Self(arr)
+    }
+
+    /// The first element in this set
+    #[must_use]
+    pub const fn first(&self) -> Option<usize> {
+        let mut word = 0;
+        while word < WORDS {
+            let tz = self.0[word].trailing_zeros();
+            if tz < u64::BITS {
+                return Some(tz as usize + (word * (u64::BITS as usize)));
+            }
+            word += 1;
+        }
+        None
+    }
+
+    /// The last element in this set
+    #[must_use]
+    pub const fn last(&self) -> Option<usize> {
+        let mut word = WORDS;
+
+        while let Some(nw) = word.checked_sub(1) {
+            word = nw;
+
+            if let Some(index) = (u64::BITS - 1).checked_sub(self.0[word].leading_zeros()) {
+                return Some(index as usize + (word * (u64::BITS as usize)));
+            }
+        }
+        return None;
     }
 }
 
@@ -400,7 +410,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn union_4(){
+    pub fn union_4() {
         let multiples_of_2 = BitSet::<4>::from_fn(|x| x % 2 == 0);
         let multiples_of_5 = BitSet::<4>::from_fn(|x| x % 5 == 0);
         let multiples_of_2_or_5 = BitSet::<4>::from_fn(|x| x % 2 == 0 || x % 5 == 0);
@@ -408,7 +418,6 @@ pub mod tests {
         let union = multiples_of_2.union(&multiples_of_5);
 
         assert_eq!(multiples_of_2_or_5, union);
-
     }
 
     #[test]
@@ -470,31 +479,76 @@ pub mod tests {
         use serde_test::*;
         let map = BitSet::<4>::EMPTY;
 
-        assert_tokens(&map, &[
-            Token::NewtypeStruct { name: "BitSet", },
-            Token::Tuple { len: 4, },
-            Token::U64(0),
-            Token::U64(0),
-            Token::U64(0),
-            Token::U64(0),
-            Token::TupleEnd
-        ]);
+        assert_tokens(
+            &map,
+            &[
+                Token::NewtypeStruct { name: "BitSet" },
+                Token::Tuple { len: 4 },
+                Token::U64(0),
+                Token::U64(0),
+                Token::U64(0),
+                Token::U64(0),
+                Token::TupleEnd,
+            ],
+        );
     }
 
     #[test]
     fn test_serde_4() {
         use serde_test::*;
-        let map = BitSet::<4>::from_fn(|x| x%2 == ((x / 64) % 2));
+        let map = BitSet::<4>::from_fn(|x| x % 2 == ((x / 64) % 2));
 
-        assert_tokens(&map, &[
-            Token::NewtypeStruct { name: "BitSet", },
-            Token::Tuple { len: 4, },
-            Token::U64(6148914691236517205),
-            Token::U64(12297829382473034410),
-            Token::U64(6148914691236517205),
-            Token::U64(12297829382473034410),
-            Token::TupleEnd
-        ]);
+        assert_tokens(
+            &map,
+            &[
+                Token::NewtypeStruct { name: "BitSet" },
+                Token::Tuple { len: 4 },
+                Token::U64(6148914691236517205),
+                Token::U64(12297829382473034410),
+                Token::U64(6148914691236517205),
+                Token::U64(12297829382473034410),
+                Token::TupleEnd,
+            ],
+        );
+    }
+
+    #[test]
+    fn test_first4() {
+        let mut set = BitSet::<4>::from_fn(|x| x % 2 == 0 || x % 5 == 0);
+
+        let expected: Vec<_> = (0..256)
+            .into_iter()
+            .filter(|x| x % 2 == 0 || x % 5 == 0)
+            .collect();
+
+        let mut actual: Vec<_> = Vec::default();
+
+        while let Some(first) = set.first() {
+            set.set_bit(first, false);
+            actual.push(first);
+        }
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_last4() {
+        let mut set = BitSet::<4>::from_fn(|x| x % 2 == 0 || x % 5 == 0);
+
+        let expected: Vec<_> = (0..256)
+            .into_iter()
+            .filter(|x| x % 2 == 0 || x % 5 == 0)
+            .rev()
+            .collect();
+
+        let mut actual: Vec<_> = Vec::default();
+
+        while let Some(last) = set.last() {
+            set.set_bit(last, false);
+            actual.push(last);
+        }
+
+        assert_eq!(expected, actual);
     }
 
     #[test]
@@ -611,7 +665,7 @@ pub mod tests {
     }
 
     #[test]
-    pub fn union_1(){
+    pub fn union_1() {
         let multiples_of_2 = BitSet::<1>::from_fn(|x| x % 2 == 0);
         let multiples_of_5 = BitSet::<1>::from_fn(|x| x % 5 == 0);
         let multiples_of_2_or_5 = BitSet::<1>::from_fn(|x| x % 2 == 0 || x % 5 == 0);
@@ -619,7 +673,6 @@ pub mod tests {
         let union = multiples_of_2.union(&multiples_of_5);
 
         assert_eq!(multiples_of_2_or_5, union);
-
     }
 
     #[test]
@@ -681,24 +734,69 @@ pub mod tests {
         use serde_test::*;
         let map = BitSet::<1>::EMPTY;
 
-        assert_tokens(&map, &[
-            Token::NewtypeStruct { name: "BitSet", },
-            Token::Tuple { len: 1, },
-            Token::U64(0),
-            Token::TupleEnd
-        ]);
+        assert_tokens(
+            &map,
+            &[
+                Token::NewtypeStruct { name: "BitSet" },
+                Token::Tuple { len: 1 },
+                Token::U64(0),
+                Token::TupleEnd,
+            ],
+        );
     }
 
     #[test]
     fn test_serde_1() {
         use serde_test::*;
-        let map = BitSet::<1>::from_fn(|x| x%2 == 0);
+        let map = BitSet::<1>::from_fn(|x| x % 2 == 0);
 
-        assert_tokens(&map, &[
-            Token::NewtypeStruct { name: "BitSet", },
-            Token::Tuple { len: 1, },
-            Token::U64(6148914691236517205),
-            Token::TupleEnd
-        ]);
+        assert_tokens(
+            &map,
+            &[
+                Token::NewtypeStruct { name: "BitSet" },
+                Token::Tuple { len: 1 },
+                Token::U64(6148914691236517205),
+                Token::TupleEnd,
+            ],
+        );
+    }
+
+    #[test]
+    fn test_first1() {
+        let mut set = BitSet::<1>::from_fn(|x| x % 2 == 0 || x % 5 == 0);
+
+        let expected: Vec<_> = (0..64)
+            .into_iter()
+            .filter(|x| x % 2 == 0 || x % 5 == 0)
+            .collect();
+
+        let mut actual: Vec<_> = Vec::default();
+
+        while let Some(first) = set.first() {
+            set.set_bit(first, false);
+            actual.push(first);
+        }
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_last1() {
+        let mut set = BitSet::<1>::from_fn(|x| x % 2 == 0 || x % 5 == 0);
+
+        let expected: Vec<_> = (0..64)
+            .into_iter()
+            .filter(|x| x % 2 == 0 || x % 5 == 0)
+            .rev()
+            .collect();
+
+        let mut actual: Vec<_> = Vec::default();
+
+        while let Some(last) = set.last() {
+            set.set_bit(last, false);
+            actual.push(last);
+        }
+
+        assert_eq!(expected, actual);
     }
 }
