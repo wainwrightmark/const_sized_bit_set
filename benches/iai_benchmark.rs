@@ -11,6 +11,7 @@ fn sum_elements<const W: usize>(set: BitSet<W>) -> usize {
 
 fn sum_all_elements_1() -> usize {
     sum_elements::<1>(black_box(BitSet::ALL))
+    
 }
 fn sum_all_elements_2() -> usize {
     sum_elements::<2>(black_box(BitSet::ALL))
@@ -22,4 +23,18 @@ fn sum_all_elements_4() -> usize {
     sum_elements::<4>(black_box(BitSet::ALL))
 }
 
-iai::main!(sum_all_elements_1, sum_all_elements_2, sum_all_elements_3, sum_all_elements_4);
+fn is_subset()-> usize{
+    let all = black_box(BitSet::<4>::ALL);
+    let mut count = 0;
+    for index in [63,127,191,255]{
+        let set = black_box(BitSet::EMPTY.with_bit_set(index, true));
+
+        if set.is_subset(&all){
+            count += 1;
+        }
+    }
+
+    count
+}
+
+iai::main!(sum_all_elements_1, sum_all_elements_2, sum_all_elements_3, sum_all_elements_4, is_subset);

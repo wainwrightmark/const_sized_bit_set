@@ -172,7 +172,7 @@ impl<const WORDS: usize> BitSet<WORDS> {
     #[must_use]
     #[inline]
     pub const fn is_subset(&self, rhs: &Self) -> bool {
-        self.intersect(rhs).eq(self) //todo check one word at a time
+        self.intersect(rhs).eq(self)
     }
 
     #[must_use]
