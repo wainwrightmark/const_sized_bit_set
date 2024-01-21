@@ -26,6 +26,7 @@ impl<const WORDS: usize> BitSet<WORDS> {
     /// The set where all tiles are present
     pub const ALL: Self = { Self::EMPTY.negate() };
 
+    #[inline]
     #[must_use]
     pub fn from_fn<F: FnMut(usize) -> bool>(mut cb: F) -> Self {
         let mut result = Self::default();
@@ -38,6 +39,7 @@ impl<const WORDS: usize> BitSet<WORDS> {
         result
     }
 
+    #[inline]
     pub fn from_iter(iter: impl Iterator<Item = usize>) -> Self {
         let mut r = Self::default();
         for x in iter {
@@ -52,6 +54,7 @@ impl<const WORDS: usize> BitSet<WORDS> {
         self.0
     }
 
+    #[inline]
     pub const fn from_inner(inner: [u64; WORDS]) -> Self {
         Self(inner)
     }
@@ -124,6 +127,7 @@ impl<const WORDS: usize> BitSet<WORDS> {
     }
 
     #[must_use]
+    #[inline]
     pub const fn count(&self) -> u32 {
         let mut count: u32 = 0;
         let mut word = 0;
@@ -136,6 +140,7 @@ impl<const WORDS: usize> BitSet<WORDS> {
     }
 
     #[must_use]
+    #[inline]
     pub const fn intersect(&self, rhs: &Self) -> Self {
         let mut arr = self.0;
         let mut word = 0;
@@ -149,6 +154,7 @@ impl<const WORDS: usize> BitSet<WORDS> {
     }
 
     #[must_use]
+    #[inline]
     pub const fn union(&self, rhs: &Self) -> Self {
         let mut arr = self.0;
         let mut word = 0;
@@ -162,17 +168,20 @@ impl<const WORDS: usize> BitSet<WORDS> {
     }
 
     #[must_use]
+    #[inline]
     pub const fn is_subset(&self, rhs: &Self) -> bool {
         self.intersect(rhs).eq(self) //todo check one word at a time
     }
 
     #[must_use]
+    #[inline]
     pub const fn is_superset(&self, rhs: &Self) -> bool {
         rhs.is_subset(self)
     }
 
     /// Returns a new set containing all elements which belong to one set but not both
     #[must_use]
+    #[inline]
     pub const fn symmetric_difference(&self, rhs: &Self) -> Self {
         let mut arr = self.0;
         let mut word = 0;
@@ -186,6 +195,7 @@ impl<const WORDS: usize> BitSet<WORDS> {
     }
 
     #[must_use]
+    #[inline]
     pub const fn negate(&self) -> Self {
         let mut arr = [0; WORDS];
         let mut word = 0;
@@ -199,6 +209,7 @@ impl<const WORDS: usize> BitSet<WORDS> {
 
     /// The first element in this set
     #[must_use]
+    #[inline]
     pub const fn first(&self) -> Option<usize> {
         let mut word = 0;
         while word < WORDS {
@@ -213,6 +224,7 @@ impl<const WORDS: usize> BitSet<WORDS> {
 
     /// The last element in this set
     #[must_use]
+    #[inline]
     pub const fn last(&self) -> Option<usize> {
         let mut word = WORDS;
 
@@ -232,6 +244,7 @@ impl<const WORDS: usize> IntoIterator for BitSet<WORDS> {
 
     type IntoIter = BitSetIter<WORDS>;
 
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         BitSetIter { inner: self }
     }
@@ -250,6 +263,7 @@ impl<const WORDS: usize> FusedIterator for BitSetIter<WORDS> {}
 impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
     type Item = usize;
 
+    #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let mut first: usize;
         let mut tz: u32;
@@ -269,11 +283,13 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
         Some(first)
     }
 
+    #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         let c = self.count();
         (c, Some(c))
     }
 
+    #[inline]
     fn count(self) -> usize
     where
         Self: Sized,
@@ -283,6 +299,7 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
 }
 
 impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
+    #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
         let mut last: usize;
 
@@ -291,8 +308,7 @@ impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
         loop {
             word = word.checked_sub(1)?;
 
-            if let Some(i) = (u64::BITS - 1).checked_sub(self.inner.0[word].leading_zeros())
-            {
+            if let Some(i) = (u64::BITS - 1).checked_sub(self.inner.0[word].leading_zeros()) {
                 index = i;
                 last = index as usize + (word * (u64::BITS as usize));
                 break;
