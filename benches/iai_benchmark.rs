@@ -1,5 +1,7 @@
 use const_sized_bit_set::*;
-use iai::*;
+use iai_callgrind::{main, library_benchmark_group, library_benchmark};
+
+use std::hint::black_box;
 
 fn sum_elements<const W: usize>(set: BitSet<W>) -> usize {
     let mut sum = 0usize;
@@ -9,20 +11,28 @@ fn sum_elements<const W: usize>(set: BitSet<W>) -> usize {
     sum
 }
 
+#[library_benchmark]
 fn sum_all_elements_1() -> usize {
     sum_elements::<1>(black_box(BitSet::ALL))
     
 }
+
+#[library_benchmark]
 fn sum_all_elements_2() -> usize {
     sum_elements::<2>(black_box(BitSet::ALL))
 }
+
+#[library_benchmark]
 fn sum_all_elements_3() -> usize {
     sum_elements::<3>(black_box(BitSet::ALL))
 }
+
+#[library_benchmark]
 fn sum_all_elements_4() -> usize {
     sum_elements::<4>(black_box(BitSet::ALL))
 }
 
+#[library_benchmark]
 fn is_subset()-> usize{
     let all = black_box(BitSet::<4>::ALL);
     let mut count = 0;
@@ -37,4 +47,14 @@ fn is_subset()-> usize{
     count
 }
 
-iai::main!(sum_all_elements_1, sum_all_elements_2, sum_all_elements_3, sum_all_elements_4, is_subset);
+library_benchmark_group!(
+    name = sum_elements;
+    benchmarks = sum_all_elements_1, sum_all_elements_2, sum_all_elements_3, sum_all_elements_4
+);
+
+library_benchmark_group!(
+    name = subset;
+    benchmarks = is_subset
+);
+
+main!(library_benchmark_groups = sum_elements, subset);
