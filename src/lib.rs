@@ -86,6 +86,7 @@ impl<const WORDS: usize> BitSet<WORDS> {
         let shift = (index % u64::BITS as usize) as u32;
 
         if bit {
+            //todo remove branch?
             self.0[word] |= 1u64 << shift;
         } else {
             self.0[word] &= !(1u64 << shift);
@@ -101,6 +102,7 @@ impl<const WORDS: usize> BitSet<WORDS> {
         let shift = (index % u64::BITS as usize) as u32;
 
         let inner = if bit {
+            //todo remove branch?
             self.0[word] | (1u64 << shift)
         } else {
             self.0[word] & !(1u64 << shift)
@@ -237,6 +239,43 @@ impl<const WORDS: usize> BitSet<WORDS> {
         }
         return None;
     }
+
+    /// The removes the first (smallest) element of the set and returns it
+    /// Returns `None` if the set is empty
+    #[must_use]
+    #[inline]
+    pub fn pop(&mut self) -> Option<usize> {
+        let mut word = 0;
+        while word < WORDS {
+            let tz = self.0[word].trailing_zeros();
+            if tz < u64::BITS {
+                let r = tz as usize + (word * (u64::BITS as usize));
+                self.0[word] &= !(1u64 << tz);
+
+                return Some(r);
+            }
+            word += 1;
+        }
+        None
+    }
+
+    /// The last element in this set
+    #[must_use]
+    #[inline]
+    pub fn pop_last(&mut self) -> Option<usize> {
+        let mut word = WORDS;
+
+        while let Some(nw) = word.checked_sub(1) {
+            word = nw;
+
+            if let Some(index) = (u64::BITS - 1).checked_sub(self.0[word].leading_zeros()) {
+                let r = index as usize + (word * (u64::BITS as usize));
+                self.0[word] &= !(1u64 << index);
+                return Some(r);
+            }
+        }
+        return None;
+    }
 }
 
 impl<const WORDS: usize> IntoIterator for BitSet<WORDS> {
@@ -265,22 +304,7 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
-        let mut first: usize;
-        let mut tz: u32;
-        let mut word = 0;
-        loop {
-            if word >= WORDS {
-                return None;
-            }
-            tz = self.inner.0[word].trailing_zeros();
-            if tz < u64::BITS {
-                first = tz as usize + (word * (u64::BITS as usize));
-                break;
-            }
-            word += 1;
-        }
-        self.inner.0[word] &= !(1u64 << tz);
-        Some(first)
+        self.inner.pop()
     }
 
     #[inline]
@@ -301,21 +325,7 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
 impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
     #[inline]
     fn next_back(&mut self) -> Option<Self::Item> {
-        let mut last: usize;
-
-        let mut word = WORDS;
-        let mut index: u32;
-        loop {
-            word = word.checked_sub(1)?;
-
-            if let Some(i) = (u64::BITS - 1).checked_sub(self.inner.0[word].leading_zeros()) {
-                index = i;
-                last = index as usize + (word * (u64::BITS as usize));
-                break;
-            }
-        }
-        self.inner.0[word] &= !(1u64 << index);
-        Some(last)
+        self.inner.pop_last()
     }
 }
 
@@ -598,6 +608,43 @@ pub mod tests {
     }
 
     #[test]
+    fn test_pop4() {
+        let mut set = BitSet::<4>::from_fn(|x| x % 2 == 0 || x % 5 == 0);
+
+        let expected: Vec<_> = (0..256)
+            .into_iter()
+            .filter(|x| x % 2 == 0 || x % 5 == 0)
+            .collect();
+
+        let mut actual: Vec<_> = Vec::default();
+
+        while let Some(first) = set.pop() {
+            actual.push(first);
+        }
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_pop_last4() {
+        let mut set = BitSet::<4>::from_fn(|x| x % 2 == 0 || x % 5 == 0);
+
+        let expected: Vec<_> = (0..256)
+            .into_iter()
+            .filter(|x| x % 2 == 0 || x % 5 == 0)
+            .rev()
+            .collect();
+
+        let mut actual: Vec<_> = Vec::default();
+
+        while let Some(last) = set.pop_last() {
+            actual.push(last);
+        }
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
     pub fn from_fn_1() {
         let evens = BitSet::<1>::from_fn(|x| x % 2 == 0);
 
@@ -857,6 +904,43 @@ pub mod tests {
 
         while let Some(last) = set.last() {
             set.set_bit(last, false);
+            actual.push(last);
+        }
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_pop_1() {
+        let mut set = BitSet::<1>::from_fn(|x| x % 2 == 0 || x % 5 == 0);
+
+        let expected: Vec<_> = (0..64)
+            .into_iter()
+            .filter(|x| x % 2 == 0 || x % 5 == 0)
+            .collect();
+
+        let mut actual: Vec<_> = Vec::default();
+
+        while let Some(first) = set.pop() {
+            actual.push(first);
+        }
+
+        assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_pop_last1() {
+        let mut set = BitSet::<1>::from_fn(|x| x % 2 == 0 || x % 5 == 0);
+
+        let expected: Vec<_> = (0..64)
+            .into_iter()
+            .filter(|x| x % 2 == 0 || x % 5 == 0)
+            .rev()
+            .collect();
+
+        let mut actual: Vec<_> = Vec::default();
+
+        while let Some(last) = set.pop_last() {
             actual.push(last);
         }
 
