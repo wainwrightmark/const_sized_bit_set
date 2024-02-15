@@ -320,6 +320,87 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
     {
         self.inner.count() as usize
     }
+
+    #[inline]
+    fn last(mut self) -> Option<Self::Item>
+    where
+        Self: Sized,
+    {
+        self.inner.last()
+    }
+
+    #[inline]
+    fn max(self) -> Option<Self::Item>
+    where
+        Self: Sized,
+        Self::Item: Ord,
+    {
+        self.last()
+    }
+
+    #[inline]
+    fn min(mut self) -> Option<Self::Item>
+    where
+        Self: Sized,
+        Self::Item: Ord,
+    {
+        self.next()
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<Self::Item> {
+        let mut word_index = 0;
+        let mut n = n;
+        while word_index < WORDS {
+            if let Some(new_n) = n.checked_sub(self.inner.0[word_index].count_ones() as usize) {
+                n = new_n;
+                self.inner.0[word_index] = 0;
+                word_index += 1;
+                //continue loop
+            } else {
+                loop {
+                    let tz = self.inner.0[word_index].trailing_zeros();
+                    self.inner.0[word_index] &= !(1u64 << tz);
+                    if let Some(new_n) = n.checked_sub(1) {
+                        n = new_n;
+                    } else {
+                        let r = tz as usize + (word_index * (u64::BITS as usize));
+                        return Some(r);
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    #[inline]
+    fn fold<B, F>(mut self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        let mut accum = init;
+        let mut word = 0;
+        loop {
+            let tz = self.inner.0[word].trailing_zeros();
+            if tz < u64::BITS {
+                let r = tz as usize + (word * (u64::BITS as usize));
+                self.inner.0[word] &= !(1u64 << tz);
+
+                accum = f(accum, r);
+            } else {
+                word += 1;
+                if word >= WORDS {
+                    return accum;
+                }
+            }
+        }
+    }
+
+    //todo is_sorted
+
+    //todo find a fast way to do Sum
+    //todo find a fast way to do Product
 }
 
 impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
@@ -327,13 +408,61 @@ impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.inner.pop_last()
     }
+
+    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
+        let mut word_index = WORDS;
+        let mut n = n;
+        while let Some(nw) = word_index.checked_sub(1) {
+            word_index = nw;
+
+            if let Some(new_n) = n.checked_sub(self.inner.0[word_index].count_ones() as usize) {
+                n = new_n;
+                self.inner.0[word_index] = 0;
+                //continue loop
+            } else {
+                loop {
+                    let index = u64::BITS - 1 - (self.inner.0[word_index].leading_zeros());
+                    self.inner.0[word_index] &= !(1u64 << index);
+                    if let Some(new_n) = n.checked_sub(1) {
+                        n = new_n;
+                    } else {
+                        let r = index as usize + (word_index * (u64::BITS as usize));
+                        return Some(r);
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    fn rfold<B, F>(mut self, init: B, mut f: F) -> B
+    where
+        Self: Sized,
+        F: FnMut(B, Self::Item) -> B,
+    {
+        let mut accum = init;
+        let mut word_index = WORDS;
+
+        while let Some(nw) = word_index.checked_sub(1) {
+            word_index = nw;
+
+            while let Some(index) =
+                (u64::BITS - 1).checked_sub(self.inner.0[word_index].leading_zeros())
+            {
+                let r = index as usize + (word_index * (u64::BITS as usize));
+                self.inner.0[word_index] &= !(1u64 << index);
+
+                accum = f(accum, r);
+            }
+        }
+        accum
+    }
 }
 
 #[cfg(test)]
 pub mod tests {
-    use std::collections::BTreeSet;
-
     use crate::BitSet;
+    use std::collections::BTreeSet;
 
     #[test]
     pub fn from_fn_4() {
@@ -428,6 +557,7 @@ pub mod tests {
     pub fn set_bit_4() {
         let mut my_set = BitSet::<4>::from_fn(|x| x % 2 == 0);
         my_set.set_bit(1, true);
+        my_set.set_bit(1, true); //set the bit twice to test that
         my_set.set_bit(65, true);
 
         my_set.set_bit(2, false);
@@ -449,6 +579,7 @@ pub mod tests {
     pub fn with_bit_set_4() {
         let my_set = BitSet::<4>::from_fn(|x| x % 2 == 0)
             .with_bit_set(1, true)
+            .with_bit_set(1, true) //set the bit twice to test that
             .with_bit_set(65, true)
             .with_bit_set(2, false)
             .with_bit_set(64, false);
@@ -642,6 +773,82 @@ pub mod tests {
         }
 
         assert_eq!(expected, actual);
+    }
+
+    #[test]
+    fn test_iter_last4() {
+        let set = BitSet::<4>::from_fn(|x| x % 7 == 0);
+        let iter = set.into_iter();
+        assert_eq!(iter.last(), Some(252));
+    }
+
+    #[test]
+    fn test_iter_max4() {
+        let set = BitSet::<4>::from_fn(|x| x % 7 == 0 && x < 140);
+        let iter = set.into_iter();
+        let max = Iterator::max(iter);
+        assert_eq!(max, Some(133));
+    }
+
+    #[test]
+    fn test_iter_min4() {
+        let set = BitSet::<4>::from_fn(|x| x > 64 && x % 7 == 0);
+        let iter = set.into_iter();
+        let min = Iterator::min(iter);
+        assert_eq!(min, Some(70));
+    }
+
+    #[test]
+    fn test_iter_nth_4() {
+        let set = BitSet::<4>::from_fn(|x| x % 7 == 0);
+        let mut iter = set.into_iter();
+        let n_0 = iter.nth(0);
+
+        assert_eq!(n_0, Some(0));
+
+        let n_10 = iter.nth(10);
+
+        assert_eq!(n_10, Some(77));
+
+        let n_100 = iter.nth(100);
+
+        assert_eq!(n_100, None);
+    }
+
+    #[test]
+    fn test_iter_nth_back_4() {
+        let set = BitSet::<4>::from_fn(|x| x % 7 == 0);
+        let mut iter = set.into_iter();
+
+        let n_0 = iter.nth_back(0);
+
+        assert_eq!(n_0, Some(252));
+
+        let n_10 = iter.nth_back(10);
+
+        assert_eq!(n_10, Some(175));
+
+        let n_100 = iter.nth_back(100);
+
+        assert_eq!(n_100, None);
+    }
+
+    #[test]
+    fn test_iter_fold4() {
+        let set = BitSet::<4>::from_fn(|x| x % 7 == 0);
+        let iter = set.into_iter();
+        let fold_result = iter.fold(13, |acc, x| acc + x);
+
+        assert_eq!(fold_result, 4675);
+    }
+
+    #[test]
+    fn test_iter_rfold4() {
+        let set = BitSet::<4>::from_fn(|x| x % 7 == 0);
+        let iter = set.into_iter();
+        let fold_result = iter.rfold(13, |acc, x| acc + x);
+
+        assert_eq!(fold_result, 4675);
     }
 
     #[test]
