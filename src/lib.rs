@@ -66,22 +66,6 @@ impl<const WORDS: usize> BitSet<WORDS> {
         result
     }
 
-    // #[inline]
-    // #[must_use]
-    // pub fn from_fn<F: FnMut(usize) -> bool>(mut func: F) -> Self {
-    //     let mut result = Self::default();
-
-    //     for w in 0..WORDS{
-    //         for shift in 0..u64::BITS{
-    //             if func((w * u64::BITS as usize) + (shift as usize)){
-    //                 result.0[w] |= 1u64 << shift;
-    //             }
-    //         }
-    //     }
-
-    //     result
-    // }
-
     #[must_use]
     #[inline]
     pub const fn into_inner(self) -> [u64; WORDS] {
