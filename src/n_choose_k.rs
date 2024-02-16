@@ -1,5 +1,5 @@
 #[derive(Debug, Clone, PartialEq)]
-pub struct NChooseK {
+pub (crate) struct NChooseK {
     n: u32,
     k: u32,
     result: u32,
