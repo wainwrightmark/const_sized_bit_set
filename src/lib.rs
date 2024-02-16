@@ -26,27 +26,34 @@ impl<const WORDS: usize> BitSet<WORDS> {
     /// The set where all tiles are present
     pub const ALL: Self = { Self::EMPTY.negate() };
 
+    pub const LAST_WORD: usize = WORDS - 1;
+
     #[inline]
     #[must_use]
     pub fn from_fn<F: FnMut(usize) -> bool>(mut cb: F) -> Self {
         let mut result = Self::default();
-        for x in 0..(WORDS * (u64::BITS as usize)) {
-            if cb(x) {
-                result.set_bit(x, true);
-            }
+        for x in (0..(WORDS * (u64::BITS as usize))).filter(|x| cb(*x)) {
+            result.insert(x);
         }
 
         result
     }
 
-    #[inline]
-    pub fn from_iter(iter: impl Iterator<Item = usize>) -> Self {
-        let mut r = Self::default();
-        for x in iter {
-            r.set_bit(x, true);
-        }
-        r
-    }
+    // #[inline]
+    // #[must_use]
+    // pub fn from_fn<F: FnMut(usize) -> bool>(mut func: F) -> Self {
+    //     let mut result = Self::default();
+
+    //     for w in 0..WORDS{
+    //         for shift in 0..u64::BITS{
+    //             if func((w * u64::BITS as usize) + (shift as usize)){
+    //                 result.0[w] |= 1u64 << shift;
+    //             }
+    //         }
+    //     }
+
+    //     result
+    // }
 
     #[must_use]
     #[inline]
@@ -79,6 +86,7 @@ impl<const WORDS: usize> BitSet<WORDS> {
     }
 
     /// Sets the bit at `index` to `bit`
+    ///
     /// PANICS if index is out of range
     #[inline]
     pub fn set_bit(&mut self, index: usize, bit: bool) {
@@ -86,37 +94,86 @@ impl<const WORDS: usize> BitSet<WORDS> {
         let shift = (index % u64::BITS as usize) as u32;
 
         if bit {
-            //todo remove branch?
-            self.0[word] |= 1u64 << shift;
+            self.insert(index);
         } else {
-            self.0[word] &= !(1u64 << shift);
+            self.remove(index);
         }
     }
 
+    /// Adds `value` to the set.
+    ///
+    /// Returns whether `value` was newly inserted.
+    ///
+    /// PANICS if `value` is out of range
+    #[inline]
+    pub fn insert(&mut self, value: usize) -> bool {
+        let word = value / u64::BITS as usize;
+        let shift = (value % u64::BITS as usize) as u32;
+        let mask = 1u64 << shift;
+        let r = self.0[word] & mask == 0;
+
+        self.0[word] |= mask;
+        r
+    }
+
+    /// If the set contains `value`, removes it from the set.
+    /// Returns whether such an element was present.
+    ///
+    /// PANICS if `value` is out of range
+    #[inline]
+    pub fn remove(&mut self, value: usize) -> bool {
+        let word = value / u64::BITS as usize;
+        let shift = (value % u64::BITS as usize) as u32;
+        let mask = 1u64 << shift;
+        let r = self.0[word] & mask != 0;
+
+        self.0[word] &= !mask;
+        r
+    }
+
     /// Returns a copy of `self` with the bit at `index` set to `bit`
+    ///
     /// PANICS if index is out of range
     #[must_use]
     #[inline]
     pub const fn with_bit_set(&self, index: usize, bit: bool) -> Self {
-        let word = index / u64::BITS as usize;
-        let shift = (index % u64::BITS as usize) as u32;
-
-        let inner = if bit {
-            //todo remove branch?
-            self.0[word] | (1u64 << shift)
+        if bit {
+            self.with_inserted(index)
         } else {
-            self.0[word] & !(1u64 << shift)
-        };
+            self.with_removed(index)
+        }
+    }
+
+    /// PANICS if index is out of range
+    #[must_use]
+    #[inline]
+    pub const fn with_inserted(&self, value: usize) -> Self {
+        let word = value / u64::BITS as usize;
+        let shift = (value % u64::BITS as usize) as u32;
 
         let mut arr = self.0;
-        arr[word] = inner;
+        arr[word] = self.0[word] | (1u64 << shift);
+
+        Self(arr)
+    }
+
+    /// PANICS if index is out of range
+    #[must_use]
+    #[inline]
+    pub const fn with_removed(&self, value: usize) -> Self {
+        let word = value / u64::BITS as usize;
+        let shift = (value % u64::BITS as usize) as u32;
+
+        let mut arr = self.0;
+        arr[word] = self.0[word] & !(1u64 << shift);
 
         Self(arr)
     }
 
     #[must_use]
     #[inline]
-    pub const fn get_bit(&self, index: usize) -> bool {
+    #[doc(alias = "get_bit")]
+    pub const fn contains(&self, index: usize) -> bool {
         let word_index = index / u64::BITS as usize;
         let shift = (index % u64::BITS as usize) as u32;
 
@@ -209,9 +266,10 @@ impl<const WORDS: usize> BitSet<WORDS> {
         Self(arr)
     }
 
-    /// The first element in this set
+    /// The first (minimum) element in this set
     #[must_use]
     #[inline]
+    #[doc(alias = "min")]
     pub const fn first(&self) -> Option<usize> {
         let mut word = 0;
         while word < WORDS {
@@ -224,20 +282,24 @@ impl<const WORDS: usize> BitSet<WORDS> {
         None
     }
 
-    /// The last element in this set
+    /// The last (maximum) element in this set
     #[must_use]
     #[inline]
+    #[doc(alias = "max")]
     pub const fn last(&self) -> Option<usize> {
-        let mut word = WORDS;
+        let mut word = Self::LAST_WORD;
 
-        while let Some(nw) = word.checked_sub(1) {
-            word = nw;
-
+        loop {
             if let Some(index) = (u64::BITS - 1).checked_sub(self.0[word].leading_zeros()) {
-                return Some(index as usize + (word * (u64::BITS as usize)));
+                let r = index as usize + (word * (u64::BITS as usize));
+                return Some(r);
+            }
+            if let Some(nw) = word.checked_sub(1) {
+                word = nw;
+            } else {
+                return None;
             }
         }
-        return None;
     }
 
     /// The removes the first (smallest) element of the set and returns it
@@ -263,18 +325,34 @@ impl<const WORDS: usize> BitSet<WORDS> {
     #[must_use]
     #[inline]
     pub fn pop_last(&mut self) -> Option<usize> {
-        let mut word = WORDS;
+        let mut word = Self::LAST_WORD;
 
-        while let Some(nw) = word.checked_sub(1) {
-            word = nw;
-
+        loop {
             if let Some(index) = (u64::BITS - 1).checked_sub(self.0[word].leading_zeros()) {
                 let r = index as usize + (word * (u64::BITS as usize));
                 self.0[word] &= !(1u64 << index);
                 return Some(r);
             }
+            if let Some(nw) = word.checked_sub(1) {
+                word = nw;
+            } else {
+                return None;
+            }
         }
-        return None;
+    }
+}
+
+impl<const WORDS: usize> Extend<usize> for BitSet<WORDS> {
+    fn extend<T: IntoIterator<Item = usize>>(&mut self, iter: T) {
+        *self = iter.into_iter().fold(*self, |acc,v| acc.with_inserted(v));
+
+    }
+}
+
+impl<const WORDS: usize> FromIterator<usize> for BitSet<WORDS> {
+    #[inline]
+    fn from_iter<T: IntoIterator<Item = usize>>(iter: T) -> Self {
+        iter.into_iter().fold(Self::default(), |acc,v| acc.with_inserted(v))
     }
 }
 
@@ -292,7 +370,6 @@ impl<const WORDS: usize> IntoIterator for BitSet<WORDS> {
 #[must_use]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct BitSetIter<const WORDS: usize> {
-    //TODO use more efficient iterator if size is greater than one
     inner: BitSet<WORDS>,
 }
 
@@ -441,26 +518,27 @@ impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
         F: FnMut(B, Self::Item) -> B,
     {
         let mut accum = init;
-        let mut word_index = WORDS;
+        let mut word = BitSet::<WORDS>::LAST_WORD;
 
-        while let Some(nw) = word_index.checked_sub(1) {
-            word_index = nw;
-
-            while let Some(index) =
-                (u64::BITS - 1).checked_sub(self.inner.0[word_index].leading_zeros())
-            {
-                let r = index as usize + (word_index * (u64::BITS as usize));
-                self.inner.0[word_index] &= !(1u64 << index);
+        loop {
+            if let Some(index) = (u64::BITS - 1).checked_sub(self.inner.0[word].leading_zeros()) {
+                let r = index as usize + (word * (u64::BITS as usize));
+                self.inner.0[word] &= !(1u64 << index);
 
                 accum = f(accum, r);
+            } else if let Some(nw) = word.checked_sub(1) {
+                word = nw;
+            } else {
+                return accum;
             }
         }
-        accum
     }
 }
 
 #[cfg(test)]
 pub mod tests {
+    use serde::de::Expected;
+
     use crate::BitSet;
     use std::collections::BTreeSet;
 
@@ -493,6 +571,21 @@ pub mod tests {
         let items: Vec<usize> = iter.collect();
 
         assert_eq!(items, expected);
+    }
+
+    #[test]
+    pub fn extend_4() {
+        let multiples_of_5: Vec<usize> = (0..52usize).map(|x| x * 5).collect();
+        let multiples_of_4: Vec<usize> = (0..64usize).map(|x| x * 4).collect();
+
+        let mut set = BitSet::<4>::from_iter(multiples_of_5.iter().cloned());
+        set.extend(multiples_of_4);
+
+        assert_eq!(103, set.count());
+
+        let expected = BitSet::<4>::from_fn(|x| x % 4 == 0 || x % 5 == 0);
+
+        assert_eq!(set, expected);
     }
 
     #[test]
@@ -543,11 +636,11 @@ pub mod tests {
     }
 
     #[test]
-    pub fn get_bit_4() {
+    pub fn contains_4() {
         let my_set = BitSet::<4>::from_fn(|x| x % 2 == 0);
 
         for x in 0..260 {
-            let value = my_set.get_bit(x);
+            let value = my_set.contains(x);
 
             assert_eq!(x % 2 == 0 && x < 256, value);
         }
@@ -562,6 +655,28 @@ pub mod tests {
 
         my_set.set_bit(2, false);
         my_set.set_bit(64, false);
+
+        let mut expected: BTreeSet<usize> = (0..128usize).map(|x| x * 2).collect();
+        expected.insert(1);
+        expected.insert(65);
+        expected.remove(&2);
+        expected.remove(&64);
+
+        let actual: Vec<_> = my_set.into_iter().collect();
+        let expected: Vec<_> = expected.into_iter().collect();
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    pub fn insert_and_remove_bit_4() {
+        let mut my_set = BitSet::<4>::from_fn(|x| x % 2 == 0);
+        assert!(my_set.insert(1));
+        assert!(!my_set.insert(1));
+        assert!(my_set.insert(65));
+
+        assert!(my_set.remove(2));
+        assert!(my_set.remove(64));
 
         let mut expected: BTreeSet<usize> = (0..128usize).map(|x| x * 2).collect();
         expected.insert(1);
@@ -930,11 +1045,11 @@ pub mod tests {
     }
 
     #[test]
-    pub fn get_bit_1() {
+    pub fn contains_1() {
         let my_set = BitSet::<1>::from_fn(|x| x % 2 == 0);
 
         for x in 0..70 {
-            let value = my_set.get_bit(x);
+            let value = my_set.contains(x);
 
             assert_eq!(x % 2 == 0 && x < 64, value);
         }
