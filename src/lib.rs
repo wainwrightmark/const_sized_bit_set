@@ -531,21 +531,30 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
         F: FnMut(B, Self::Item) -> B,
     {
         let mut accum = init;
-        let mut word = 0;
-        loop {
-            let tz = self.inner.0[word].trailing_zeros();
-            if tz < u64::BITS {
-                let r = tz as usize + (word * (u64::BITS as usize));
-                self.inner.0[word] &= !(1u64 << tz);
 
-                accum = f(accum, r);
-            } else {
-                word += 1;
-                if word >= WORDS {
-                    return accum;
+        for word_index in 0..WORDS {
+            let mut offset = word_index * (u64::BITS as usize);
+            let mut word = self.inner.0[word_index];
+            'inner: loop {
+                let tz = word.trailing_zeros();
+
+                match word.checked_shr(tz) {
+                    Some(w) => word = w,
+                    None => break 'inner,
+                }
+                offset += (tz as usize);
+                let trailing_ones = word.trailing_ones();
+                for _ in 0..trailing_ones {
+                    accum = f(accum, offset);
+                    offset += 1;
+                }
+                match word.checked_shr(trailing_ones) {
+                    Some(w) => word = w,
+                    None => break 'inner,
                 }
             }
         }
+        accum
     }
 
     //todo is_sorted
@@ -591,6 +600,7 @@ impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
+        //todo fast version (see fold)
         let mut accum = init;
         let mut word = BitSet::<WORDS>::LAST_WORD;
 
@@ -1030,6 +1040,10 @@ pub mod tests {
         let fold_result = iter.fold(13, |acc, x| acc + x);
 
         assert_eq!(fold_result, 4675);
+
+        let complete_set = BitSet::<4>::ALL;
+
+        assert_eq!(complete_set.into_iter().fold(0, |acc, v| acc + v), 32640)
     }
 
     #[test]
