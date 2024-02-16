@@ -1,17 +1,44 @@
 #![cfg_attr(not(any(test, feature = "std")), no_std)]
 #![allow(warnings, dead_code, unused_imports, unused_mut)]
 #![warn(clippy::pedantic)]
+mod n_choose_k;
 
 use core::{iter::FusedIterator, ops::Shr};
+use n_choose_k::n_choose_k;
 #[cfg(any(test, feature = "serde"))]
 use serde::{Deserialize, Serialize};
+use core::fmt::{Debug, Write};
 
+/// A set whose members are unsigned integers in `0..(64 * WORDS)`
+/// Most operations are O(1)
+///
+/// Set `b` is considered greater than set `a` if the largest element that is contained in `a | b` but not `a & b` is in `b`.
+/// Therefore sets are ordered like [], [0], [1], [0,1], [2], [0,2], [1,2], [0,1,2]
 #[must_use]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(any(test, feature = "serde"), derive(Serialize, Deserialize))]
 pub struct BitSet<const WORDS: usize>(
     #[cfg_attr(any(test, feature = "serde"), serde(with = "serde_arrays"))] [u64; WORDS],
 );
+
+impl<const WORDS: usize> core::fmt::Display for BitSet<WORDS> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_char('[');
+        let mut write_commas: bool = false;
+        for x in self.into_iter() {
+            if write_commas {
+                f.write_char(',');
+                f.write_char(' ');
+            } else {
+                write_commas = true;
+            }
+            core::fmt::Display::fmt(&x, f);
+        }
+
+        f.write_char(']');
+        Ok(())
+    }
+}
 
 impl<const WORDS: usize> Default for BitSet<WORDS> {
     fn default() -> Self {
@@ -354,6 +381,143 @@ impl<const WORDS: usize> FromIterator<usize> for BitSet<WORDS> {
     fn from_iter<T: IntoIterator<Item = usize>>(iter: T) -> Self {
         iter.into_iter().fold(Self::default(), |acc,v| acc.with_inserted(v))
     }
+
+    fn subset_index_to_members(&self, subset_size: u32, index: u32, member_count: u32) -> Self {
+        let mut n_c_k = crate::n_choose_k::NChooseK::new(self.count(), subset_size, member_count);
+
+        // essentially reverse the order
+        let mut index = n_c_k.result() - (index + 1);
+        let mut index = index;
+        let mut new_set = Self::EMPTY;
+        n_c_k = match n_c_k.try_decrement_k() {
+            Some(r) => r,
+            None => {
+                return new_set;
+            }
+        };
+
+        n_c_k = match n_c_k.try_decrement_n() {
+            Some(r) => r,
+            None => {
+                return new_set;
+            }
+        };
+
+        let mut set_remaining = self.clone();
+
+        while let Some(next) = set_remaining.pop_last() {
+            //let number_containing = n_choose_k(remaining_count - 1, remaining_needed - 1);
+            match index.checked_sub(n_c_k.result()) {
+                Some(new_index) => {
+                    index = new_index;
+                }
+                None => {
+                    new_set.set_bit(next, true);
+                    match n_c_k.try_decrement_k() {
+                        Some(r) => n_c_k = r,
+                        None => return new_set,
+                    }
+                }
+            }
+            match n_c_k.try_decrement_n() {
+                Some(r) => n_c_k = r,
+                None => return new_set.union(&set_remaining),
+            }
+        }
+
+        return new_set;
+    }
+
+    pub fn iter_subsets(
+        &self,
+        subset_size: u32,
+    ) -> impl Iterator<Item = Self>
+           + FusedIterator
+           + DoubleEndedIterator
+           + ExactSizeIterator
+           + Debug
+           + Clone
+           + PartialEq
+           + 'static {
+        let member_count = n_choose_k(self.count(), subset_size);
+        BitSetSubsetIter::<WORDS> {
+            set: self.clone(),
+            subset_size,
+            member_count,
+            next_index: 0,
+            after_last_index: member_count,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+struct BitSetSubsetIter<const WORDS: usize> {
+    set: BitSet<WORDS>,
+    subset_size: u32,
+    member_count: u32,
+    next_index: u32,
+    after_last_index: u32,
+}
+
+impl<const WORDS: usize> ExactSizeIterator for BitSetSubsetIter<WORDS> {
+    fn len(&self) -> usize {
+        let (lower, upper) = self.size_hint();
+        // Note: This assertion is overly defensive, but it checks the invariant
+        // guaranteed by the trait. If this trait were rust-internal,
+        // we could use debug_assert!; assert_eq! will check all Rust user
+        // implementations too.
+        debug_assert_eq!(upper, Some(lower));
+        lower
+    }
+}
+
+impl<const WORDS: usize> DoubleEndedIterator for BitSetSubsetIter<WORDS> {
+    fn next_back(&mut self) -> Option<Self::Item> {
+        if self.next_index >= self.after_last_index {
+            return None;
+        }
+        self.after_last_index -= 1;
+        let r = self.set.subset_index_to_members(
+            self.subset_size,
+            self.after_last_index,
+            self.member_count,
+        );
+
+        Some(r)
+    }
+}
+
+impl<const WORDS: usize> FusedIterator for BitSetSubsetIter<WORDS> {}
+
+impl<const WORDS: usize> Iterator for BitSetSubsetIter<WORDS> {
+    type Item = BitSet<WORDS>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.next_index >= self.after_last_index {
+            return None;
+        }
+        let r =
+            self.set
+                .subset_index_to_members(self.subset_size, self.next_index, self.member_count);
+        self.next_index += 1;
+        Some(r)
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let c = self.after_last_index.saturating_sub(self.next_index) as usize;
+        (c, Some(c))
+    }
+}
+
+struct IterSubsetsState<const WORDS: usize> {
+    remaining: BitSet<WORDS>,
+    fixed: BitSet<WORDS>,
+}
+
+impl<const WORDS: usize> core::fmt::Display for IterSubsetsState<WORDS> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(f, "{{{} {}}}", self.remaining, self.fixed)
+    }
 }
 
 impl<const WORDS: usize> IntoIterator for BitSet<WORDS> {
@@ -539,6 +703,7 @@ impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
 pub mod tests {
     use serde::de::Expected;
 
+    use crate::n_choose_k::*;
     use crate::BitSet;
     use std::collections::BTreeSet;
 
@@ -1268,4 +1433,55 @@ pub mod tests {
 
         assert_eq!(expected, actual);
     }
+
+    #[test]
+    fn test_display() {
+        let set = BitSet::<1>::from_iter([1, 2, 3, 4, 5].into_iter());
+
+        assert_eq!(set.to_string(), "[1, 2, 3, 4, 5]");
+    }
+
+    #[test]
+    fn test_iter_subsets() {
+        let set = BitSet::<1>::from_iter([0, 1, 2, 3, 4].into_iter());
+
+        for size in 0u32..=5 {
+
+            let iter = set.iter_subsets(size as u32);
+            let expected_len = n_choose_k(set.count(), size);
+            assert_eq!(iter.len(), expected_len as usize);
+            let results: Vec<_> = iter.collect();
+            
+            assert_eq!(results.len(), expected_len as usize);
+
+            for r in results.iter() {
+                assert_eq!(r.count(), size, "Result should have the correct size");
+                assert!(r.is_subset(&set), "Result should be a subset of the set");
+            }
+
+            let mut sorted_results = results.clone();
+            sorted_results.sort();
+            sorted_results.dedup();
+
+            assert_eq!(
+                results, sorted_results,
+                "Results should be sorted and free of duplicates"
+            );
+            // for r in results {
+            //     println!("{r}");
+            // }
+            // println!("")
+        }
+    }
+
+    // #[test]
+    // pub fn index_to_members() {
+    //     let set = BitSet::<1>::from_iter([0, 1, 2, 3, 4].into_iter());
+
+    //     for x in 0..10u32 {
+    //         let subset = set.subset_index_to_members(3, x, n_choose_k(5, 3));
+
+    //         println!("{subset}");
+    //     }
+    // }
 }
