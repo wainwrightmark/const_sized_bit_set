@@ -123,16 +123,40 @@ pub fn sum_with_fold_all_back_benchmark(c: &mut Criterion) {
     group.finish();
 }
 
+pub fn nth_benchmark(c: &mut Criterion) {
+    c.bench_function("nth_half", |b| {
+        b.iter(|| black_box(HALF_EMPTY_SET).into_iter().nth(black_box(10)));
+    });
+
+    c.bench_function("nth_all", |b| {
+        b.iter(|| black_box(BitSet::<4>::ALL).into_iter().nth(black_box(100)));
+    });
+
+    c.bench_function("nth_back_half", |b| {
+        b.iter(|| {
+            black_box(HALF_EMPTY_SET)
+                .into_iter()
+                .nth_back(black_box(10))
+        });
+    });
+
+    c.bench_function("nth_back_all", |b| {
+        b.iter(|| {
+            black_box(BitSet::<4>::ALL)
+                .into_iter()
+                .nth_back(black_box(100))
+        });
+    });
+}
+
 criterion_group!(
     benches,
-
+    nth_benchmark,
     sum_benchmark,
     sum_with_fold_benchmark,
-
     from_fn_benchmark,
     sum_all_back_benchmark,
     sum_with_fold_all_back_benchmark,
-    
 );
 criterion_main!(benches);
 

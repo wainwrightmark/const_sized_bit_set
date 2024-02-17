@@ -357,7 +357,6 @@ impl<const WORDS: usize> BitSet<WORDS> {
 
         // essentially reverse the order
         let mut index = n_c_k.result() - (index + 1);
-        let mut index = index;
         let mut new_set = Self::EMPTY;
         n_c_k = match n_c_k.try_decrement_k() {
             Some(r) => r,
@@ -447,7 +446,11 @@ pub struct BitSetIter<const WORDS: usize> {
     inner: BitSet<WORDS>,
 }
 
-impl<const WORDS: usize> ExactSizeIterator for BitSetIter<WORDS> {}
+impl<const WORDS: usize> ExactSizeIterator for BitSetIter<WORDS> {
+    fn len(&self) -> usize {
+        self.count()
+    }
+}
 impl<const WORDS: usize> FusedIterator for BitSetIter<WORDS> {}
 
 impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
@@ -501,22 +504,36 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         let mut word_index = 0;
-        let mut n = n;
+        let mut n = n as u32;
         while word_index < WORDS {
-            if let Some(new_n) = n.checked_sub(self.inner.0[word_index].count_ones() as usize) {
+            if let Some(new_n) = n.checked_sub(self.inner.0[word_index].count_ones()) {
                 n = new_n;
                 self.inner.0[word_index] = 0;
                 word_index += 1;
                 //continue loop
             } else {
+                let mut shift = 0;
+                let mut word = self.inner.0[word_index];
                 loop {
-                    let tz = self.inner.0[word_index].trailing_zeros();
-                    self.inner.0[word_index] &= !(1u64 << tz);
-                    if let Some(new_n) = n.checked_sub(1) {
-                        n = new_n;
-                    } else {
-                        let r = tz as usize + (word_index * (u64::BITS as usize));
-                        return Some(r);
+                    let tz = word.trailing_zeros();
+                    word >>= tz;
+                    shift += tz;
+                    let to = word.trailing_ones();
+                    match n.checked_sub(to) {
+                        Some(new_n) => {
+                            n = new_n;
+                            word >>= to;
+                            shift += to;
+                        }
+                        None => {
+                            word >>= (n + 1);
+                            let r = (shift + n) as usize + (word_index * (u64::BITS as usize));
+
+                            word <<= (shift + n + 1);
+                            self.inner.0[word_index] = word;
+
+                            return Some(r);
+                        }
                     }
                 }
             }
@@ -570,29 +587,41 @@ impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
     }
 
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-        let mut word_index = WORDS;
-        let mut n = n;
-        while let Some(nw) = word_index.checked_sub(1) {
-            word_index = nw;
-
-            if let Some(new_n) = n.checked_sub(self.inner.0[word_index].count_ones() as usize) {
+        let mut word_index = BitSet::<WORDS>::LAST_WORD;
+        let mut n = n as u32;
+        loop {
+            if let Some(new_n) = n.checked_sub(self.inner.0[word_index].count_ones()) {
                 n = new_n;
                 self.inner.0[word_index] = 0;
-                //continue loop
+                word_index = word_index.checked_sub(1)?;
             } else {
+                let mut shift = 0;
+                let mut word = self.inner.0[word_index];
                 loop {
-                    let index = u64::BITS - 1 - (self.inner.0[word_index].leading_zeros());
-                    self.inner.0[word_index] &= !(1u64 << index);
-                    if let Some(new_n) = n.checked_sub(1) {
-                        n = new_n;
-                    } else {
-                        let r = index as usize + (word_index * (u64::BITS as usize));
-                        return Some(r);
+                    let lz = word.leading_zeros();
+                    word <<= lz;
+                    shift += lz;
+                    let leading_ones = word.leading_ones();
+                    match n.checked_sub(leading_ones) {
+                        Some(new_n) => {
+                            n = new_n;
+                            word <<= leading_ones;
+                            shift += leading_ones;
+                        }
+                        None => {
+                            word <<= (n + 1);
+                            let r = (u64::BITS - (shift + n + 1)) as usize
+                                + (word_index * (u64::BITS as usize));
+
+                            word >>= (shift + n + 1);
+                            self.inner.0[word_index] = word;
+
+                            return Some(r);
+                        }
                     }
                 }
             }
         }
-        None
     }
 
     fn rfold<B, F>(mut self, init: B, mut f: F) -> B
@@ -600,22 +629,31 @@ impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
         Self: Sized,
         F: FnMut(B, Self::Item) -> B,
     {
-        //todo fast version (see fold)
         let mut accum = init;
-        let mut word = BitSet::<WORDS>::LAST_WORD;
 
-        loop {
-            if let Some(index) = (u64::BITS - 1).checked_sub(self.inner.0[word].leading_zeros()) {
-                let r = index as usize + (word * (u64::BITS as usize));
-                self.inner.0[word] &= !(1u64 << index);
+        for word_index in (0..WORDS).rev() {
+            let mut offset = (word_index + 1) * (u64::BITS as usize);
+            let mut word = self.inner.0[word_index];
+            'inner: loop {
+                let lz = word.leading_zeros();
 
-                accum = f(accum, r);
-            } else if let Some(nw) = word.checked_sub(1) {
-                word = nw;
-            } else {
-                return accum;
+                match word.checked_shl(lz) {
+                    Some(w) => word = w,
+                    None => break 'inner,
+                }
+                offset = offset.wrapping_sub(lz as usize); //this might wrap but it won't matter
+                let leading_ones = word.leading_ones();
+                for _ in 0..leading_ones {
+                    offset = offset.wrapping_sub(1);
+                    accum = f(accum, offset);
+                }
+                match word.checked_shl(leading_ones) {
+                    Some(w) => word = w,
+                    None => break 'inner,
+                }
             }
         }
+        accum
     }
 }
 
@@ -1001,36 +1039,31 @@ pub mod tests {
     #[test]
     fn test_iter_nth_4() {
         let set = BitSet::<4>::from_fn(|x| x % 7 == 0);
+        let expected_set = Vec::from_iter((0..256usize).filter(|x| x % 7 == 0));
+
         let mut iter = set.into_iter();
-        let n_0 = iter.nth(0);
+        let mut expected_iter = expected_set.into_iter();
 
-        assert_eq!(n_0, Some(0));
-
-        let n_10 = iter.nth(10);
-
-        assert_eq!(n_10, Some(77));
-
-        let n_100 = iter.nth(100);
-
-        assert_eq!(n_100, None);
+        for n in [0, 1, 10, 2, 3, 0, 0, 2, 3] {
+            let expected = expected_iter.nth(n);
+            let actual = iter.nth(n);
+            assert_eq!(expected, actual)
+        }
     }
 
     #[test]
     fn test_iter_nth_back_4() {
         let set = BitSet::<4>::from_fn(|x| x % 7 == 0);
+        let expected_set = Vec::from_iter((0..256usize).filter(|x| x % 7 == 0));
+
         let mut iter = set.into_iter();
+        let mut expected_iter = expected_set.into_iter();
 
-        let n_0 = iter.nth_back(0);
-
-        assert_eq!(n_0, Some(252));
-
-        let n_10 = iter.nth_back(10);
-
-        assert_eq!(n_10, Some(175));
-
-        let n_100 = iter.nth_back(100);
-
-        assert_eq!(n_100, None);
+        for n in [0, 1, 10, 2, 3, 0, 0, 2, 3] {
+            let expected = expected_iter.nth_back(n);
+            let actual = iter.nth_back(n);
+            assert_eq!(expected, actual)
+        }
     }
 
     #[test]
@@ -1043,7 +1076,13 @@ pub mod tests {
 
         let complete_set = BitSet::<4>::ALL;
 
-        assert_eq!(complete_set.into_iter().fold(0, |acc, v| acc + v), 32640)
+        assert_eq!(
+            complete_set.into_iter().fold(Vec::new(), |mut vec, v| {
+                vec.push(v);
+                vec
+            }),
+            Vec::from_iter((0..256))
+        )
     }
 
     #[test]
@@ -1053,6 +1092,16 @@ pub mod tests {
         let fold_result = iter.rfold(13, |acc, x| acc + x);
 
         assert_eq!(fold_result, 4675);
+
+        let complete_set = BitSet::<4>::ALL;
+
+        assert_eq!(
+            complete_set.into_iter().rfold(Vec::new(), |mut vec, v| {
+                vec.push(v);
+                vec
+            }),
+            Vec::from_iter((0..256).rev())
+        )
     }
 
     #[test]

@@ -111,6 +111,30 @@ fn sum_all_elements_rfold_4() -> usize {
 }
 
 #[library_benchmark]
+fn nth_half_10() -> Option<usize> {
+    black_box(HALF_EMPTY_SET).into_iter().nth(black_box(10))
+}
+
+#[library_benchmark]
+fn nth_all_100() -> Option<usize> {
+    black_box(BitSet::<4>::ALL).into_iter().nth(black_box(100))
+}
+
+#[library_benchmark]
+fn nth_back_half_10() -> Option<usize> {
+    black_box(HALF_EMPTY_SET)
+        .into_iter()
+        .nth_back(black_box(10))
+}
+
+#[library_benchmark]
+fn nth_back_all_100() -> Option<usize> {
+    black_box(BitSet::<4>::ALL)
+        .into_iter()
+        .nth_back(black_box(100))
+}
+
+#[library_benchmark]
 fn is_subset() -> usize {
     let all = black_box(BitSet::<4>::ALL);
     let mut count = 0;
@@ -136,6 +160,11 @@ library_benchmark_group!(
 );
 
 library_benchmark_group!(
+    name = nth;
+    benchmarks = nth_half_10, nth_all_100, nth_back_half_10, nth_back_all_100
+);
+
+library_benchmark_group!(
     name = subset;
     benchmarks = is_subset
 );
@@ -145,4 +174,9 @@ library_benchmark_group!(
     benchmarks = create_from_fn
 );
 
-main!(library_benchmark_groups = sum_elements, subset, from_fn);
+main!(
+    library_benchmark_groups = sum_elements,
+    subset,
+    from_fn,
+    nth
+);
