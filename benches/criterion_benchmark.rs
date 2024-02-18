@@ -151,45 +151,14 @@ pub fn nth_benchmark(c: &mut Criterion) {
 
 criterion_group!(
     benches,
+    sum_with_fold_benchmark,
     nth_benchmark,
     sum_benchmark,
-    sum_with_fold_benchmark,
+    
     from_fn_benchmark,
     sum_all_back_benchmark,
     sum_with_fold_all_back_benchmark,
 );
 criterion_main!(benches);
 
-const HALF_EMPTY_SET: BitSet<1> = BitSet::EMPTY
-    .with_inserted(0)
-    .with_inserted(2)
-    .with_inserted(4)
-    .with_inserted(6)
-    .with_inserted(8)
-    .with_inserted(10)
-    .with_inserted(12)
-    .with_inserted(14)
-    .with_inserted(16)
-    .with_inserted(18)
-    .with_inserted(20)
-    .with_inserted(22)
-    .with_inserted(24)
-    .with_inserted(26)
-    .with_inserted(28)
-    .with_inserted(30)
-    .with_inserted(32)
-    .with_inserted(34)
-    .with_inserted(36)
-    .with_inserted(38)
-    .with_inserted(40)
-    .with_inserted(42)
-    .with_inserted(44)
-    .with_inserted(46)
-    .with_inserted(48)
-    .with_inserted(50)
-    .with_inserted(52)
-    .with_inserted(54)
-    .with_inserted(56)
-    .with_inserted(58)
-    .with_inserted(60)
-    .with_inserted(62);
+const HALF_EMPTY_SET: BitSet<1> = BitSet::from_inner([0b101010101010101010101010101010101010101010101010101010101010101]);

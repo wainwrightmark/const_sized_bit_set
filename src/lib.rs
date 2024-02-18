@@ -549,29 +549,61 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
     {
         let mut accum = init;
 
-        for word_index in 0..WORDS {
-            let mut offset = word_index * (u64::BITS as usize);
-            let mut word = self.inner.0[word_index];
-            'inner: loop {
-                let tz = word.trailing_zeros();
-
-                match word.checked_shr(tz) {
-                    Some(w) => word = w,
-                    None => break 'inner,
+        for (index, mut word) in self.inner.0.into_iter().enumerate() {
+            let mut offset = index * (u64::BITS as usize);
+            if word == u64::MAX {
+                for v in offset..(offset + (u64::BITS as usize)) {
+                    accum = f(accum, v);
                 }
-                offset += (tz as usize);
-                let trailing_ones = word.trailing_ones();
-                for _ in 0..trailing_ones {
-                    accum = f(accum, offset);
-                    offset += 1;
-                }
-                match word.checked_shr(trailing_ones) {
-                    Some(w) => word = w,
-                    None => break 'inner,
+            } else {
+                while word != 0 {
+                    let tz = word.trailing_zeros();
+                    word >>= tz;
+                    offset += (tz as usize);
+                    let trailing_ones = word.trailing_ones();
+                    for _ in 0..trailing_ones {
+                        accum = f(accum, offset);
+                        offset += 1;
+                    }
+                    word >>= trailing_ones;
                 }
             }
         }
         accum
+    }
+
+    #[inline]
+    fn sum<S>(self) -> S
+    where
+        Self: Sized,
+        S: core::iter::Sum<Self::Item>,
+    {
+        let mut total = 0u32;
+
+        for (index, word) in self.inner.0.into_iter().enumerate() {
+            let mut multiplier = (index as u32 * u64::BITS);
+            if word == u64::MAX {
+                total += word.count_ones() * multiplier;
+                total += 2016; //sum of 0..64
+            } else {
+                let mut value = word;
+
+                while value != 0 {
+                    let zeros = value.trailing_zeros();
+                    value >>= zeros;
+                    multiplier += zeros;
+                    let ones = value.trailing_ones(); //there must be some or we wouldn't have shifted right
+                    value >>= ones; //cannot overflow as we checked for u64::MAX
+                    total += (ones * multiplier);
+
+                    total += (1 << ones) - 2;
+
+                    multiplier += ones;
+                }
+            };
+        }
+
+        S::sum(core::iter::once(total as usize))
     }
 
     //todo is_sorted
@@ -631,25 +663,23 @@ impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
     {
         let mut accum = init;
 
-        for word_index in (0..WORDS).rev() {
-            let mut offset = (word_index + 1) * (u64::BITS as usize);
-            let mut word = self.inner.0[word_index];
-            'inner: loop {
-                let lz = word.leading_zeros();
-
-                match word.checked_shl(lz) {
-                    Some(w) => word = w,
-                    None => break 'inner,
+        for (index, mut word) in self.inner.0.into_iter().enumerate().rev() {
+            let mut offset = (index + 1) * (u64::BITS as usize);
+            if word == u64::MAX {
+                for v in ((index * (u64::BITS as usize))..offset).rev() {
+                    accum = f(accum, v);
                 }
-                offset = offset.wrapping_sub(lz as usize); //this might wrap but it won't matter
-                let leading_ones = word.leading_ones();
-                for _ in 0..leading_ones {
-                    offset = offset.wrapping_sub(1);
-                    accum = f(accum, offset);
-                }
-                match word.checked_shl(leading_ones) {
-                    Some(w) => word = w,
-                    None => break 'inner,
+            } else {
+                while word != 0 {
+                    let lz = word.leading_zeros();
+                    word <<= lz;
+                    offset -= lz as usize;
+                    let leading_ones = word.leading_ones();
+                    for _ in 0..leading_ones {
+                        offset -= 1;
+                        accum = f(accum, offset);
+                    }
+                    word <<= leading_ones;
                 }
             }
         }
@@ -1102,6 +1132,19 @@ pub mod tests {
             }),
             Vec::from_iter((0..256).rev())
         )
+    }
+
+    #[test]
+    fn test_sum() {
+        let set = BitSet::<4>::from_fn(|x| x % 7 == 0);
+        let expected_set = Vec::from_iter((0..256usize).filter(|x| x % 7 == 0));
+
+        let sum: usize = set.into_iter().sum();
+        let expected_sum = expected_set.into_iter().sum();
+
+        assert_eq!(sum, expected_sum);
+
+        assert_eq!(BitSet::<4>::ALL.into_iter().sum::<usize>(), 32640);
     }
 
     #[test]

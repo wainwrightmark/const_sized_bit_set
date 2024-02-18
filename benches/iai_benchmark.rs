@@ -3,135 +3,94 @@ use iai_callgrind::{library_benchmark, library_benchmark_group, main};
 
 use std::hint::black_box;
 
-fn sum_elements<const W: usize>(set: BitSet<W>) -> usize {
-    let mut sum = 0usize;
-    for x in set.into_iter() {
-        sum = sum.wrapping_add(x);
+const FULL_SET: BitSet<4> = BitSet::ALL;
+const EMPTY_SET: BitSet<4> = BitSet::EMPTY;
+
+/// These numbers have been selected randomly, but of course they are the same every time
+const RANDOM_SET: BitSet<4> = BitSet::from_inner([
+    0b1001000101101011101011011011011010100110101011100001000100100001,
+    0b0010101001000010100111111101001110100111101111000111100101010001,
+    0b1110100110001111100101101001101001000110010010001111111011001001,
+    0b0101010010001111000001000111000110111011111101010011101010111001,
+]);
+const HALF_EMPTY_SET: BitSet<4> =
+    BitSet::from_inner([0b101010101010101010101010101010101010101010101010101010101010101; 4]);
+
+#[library_benchmark]
+#[bench::full(FULL_SET)]
+#[bench::half(HALF_EMPTY_SET)]
+#[bench::empty(EMPTY_SET)]
+#[bench::random(RANDOM_SET)]
+fn sum_all_elements_with_sum(set: BitSet<4>) -> usize {
+    black_box(set).into_iter().sum()
+}
+
+#[library_benchmark]
+#[bench::full(FULL_SET)]
+#[bench::half(HALF_EMPTY_SET)]
+#[bench::empty(EMPTY_SET)]
+#[bench::random(RANDOM_SET)]
+fn sum_all_elements_next(set: BitSet<4>) -> usize {
+    let mut acc = 0usize;
+    let mut iter = black_box(set).into_iter();
+    while let Some(x) = iter.next() {
+        acc = acc.wrapping_add(x);
     }
-    sum
+    acc
 }
 
-fn sum_elements_fold<const W: usize>(set: BitSet<W>) -> usize {
-    set.into_iter().fold(0, |acc, v| acc.wrapping_add(v))
-}
-
-fn sum_elements_rfold<const W: usize>(set: BitSet<W>) -> usize {
-    set.into_iter().rfold(0, |acc, v| acc.wrapping_add(v))
-}
-
-fn sum_elements_back<const W: usize>(set: BitSet<W>) -> usize {
-    let mut sum = 0usize;
-    for x in set.into_iter().rev() {
-        sum = sum.wrapping_add(x);
+#[library_benchmark]
+#[bench::full(FULL_SET)]
+#[bench::half(HALF_EMPTY_SET)]
+#[bench::empty(EMPTY_SET)]
+#[bench::random(RANDOM_SET)]
+fn sum_all_elements_next_back(set: BitSet<4>) -> usize {
+    let mut acc = 0usize;
+    let mut iter = black_box(set).into_iter();
+    while let Some(x) = iter.next_back() {
+        acc = acc.wrapping_add(x);
     }
-    sum
+    acc
 }
 
 #[library_benchmark]
-fn sum_all_elements_1() -> usize {
-    sum_elements::<1>(black_box(BitSet::ALL))
-}
-
-#[library_benchmark]
-fn sum_all_elements_4() -> usize {
-    sum_elements::<4>(black_box(BitSet::ALL))
-}
-
-const HALF_EMPTY_SET: BitSet<1> = BitSet::EMPTY
-    .with_inserted(0)
-    .with_inserted(2)
-    .with_inserted(4)
-    .with_inserted(6)
-    .with_inserted(8)
-    .with_inserted(10)
-    .with_inserted(12)
-    .with_inserted(14)
-    .with_inserted(16)
-    .with_inserted(18)
-    .with_inserted(20)
-    .with_inserted(22)
-    .with_inserted(24)
-    .with_inserted(26)
-    .with_inserted(28)
-    .with_inserted(30)
-    .with_inserted(32)
-    .with_inserted(34)
-    .with_inserted(36)
-    .with_inserted(38)
-    .with_inserted(40)
-    .with_inserted(42)
-    .with_inserted(44)
-    .with_inserted(46)
-    .with_inserted(48)
-    .with_inserted(50)
-    .with_inserted(52)
-    .with_inserted(54)
-    .with_inserted(56)
-    .with_inserted(58)
-    .with_inserted(60)
-    .with_inserted(62);
-
-#[library_benchmark]
-fn sum_half_elements() -> usize {
-    sum_elements::<1>(black_box(HALF_EMPTY_SET))
-}
-
-#[library_benchmark]
-fn sum_half_elements_fold() -> usize {
-    sum_elements_fold::<1>(black_box(HALF_EMPTY_SET))
-}
-
-#[library_benchmark]
-fn sum_all_elements_fold_1() -> usize {
-    sum_elements_fold::<1>(black_box(BitSet::ALL))
-}
-
-#[library_benchmark]
-fn sum_all_elements_fold_4() -> usize {
-    sum_elements_fold::<4>(black_box(BitSet::ALL))
-}
-
-#[library_benchmark]
-fn sum_all_elements_back_1() -> usize {
-    sum_elements_back::<1>(black_box(BitSet::ALL))
-}
-#[library_benchmark]
-fn sum_all_elements_back_4() -> usize {
-    sum_elements_back::<4>(black_box(BitSet::ALL))
-}
-
-#[library_benchmark]
-fn sum_all_elements_rfold_1() -> usize {
-    sum_elements_rfold::<1>(black_box(BitSet::ALL))
-}
-
-#[library_benchmark]
-fn sum_all_elements_rfold_4() -> usize {
-    sum_elements_rfold::<4>(black_box(BitSet::ALL))
-}
-
-#[library_benchmark]
-fn nth_half_10() -> Option<usize> {
-    black_box(HALF_EMPTY_SET).into_iter().nth(black_box(10))
-}
-
-#[library_benchmark]
-fn nth_all_100() -> Option<usize> {
-    black_box(BitSet::<4>::ALL).into_iter().nth(black_box(100))
-}
-
-#[library_benchmark]
-fn nth_back_half_10() -> Option<usize> {
-    black_box(HALF_EMPTY_SET)
+#[bench::full(FULL_SET)]
+#[bench::half(HALF_EMPTY_SET)]
+#[bench::empty(EMPTY_SET)]
+#[bench::random(RANDOM_SET)]
+fn sum_all_elements_fold(set: BitSet<4>) -> usize {
+    black_box(set)
         .into_iter()
-        .nth_back(black_box(10))
+        .fold(0, |acc, x| acc.wrapping_add(x))
 }
 
 #[library_benchmark]
-fn nth_back_all_100() -> Option<usize> {
-    black_box(BitSet::<4>::ALL)
+#[bench::full(FULL_SET)]
+#[bench::half(HALF_EMPTY_SET)]
+#[bench::empty(EMPTY_SET)]
+#[bench::random(RANDOM_SET)]
+fn sum_all_elements_rfold(set: BitSet<4>) -> usize {
+    black_box(set)
         .into_iter()
-        .nth_back(black_box(100))
+        .rfold(0, |acc, x| acc.wrapping_add(x))
+}
+
+#[library_benchmark]
+#[bench::full_100(FULL_SET, 100)]
+#[bench::half_100(HALF_EMPTY_SET, 100)]
+#[bench::empty_100(EMPTY_SET, 100)]
+#[bench::random_100(RANDOM_SET, 100)]
+fn nth_forward(set: BitSet<4>, n: usize) -> Option<usize> {
+    black_box(set).into_iter().nth(black_box(n))
+}
+
+#[library_benchmark]
+#[bench::all_100(BitSet::ALL, 100)]
+#[bench::half_100(HALF_EMPTY_SET, 100)]
+#[bench::empty_100(EMPTY_SET, 100)]
+#[bench::random_100(RANDOM_SET, 100)]
+fn nth_back(set: BitSet<4>, n: usize) -> Option<usize> {
+    black_box(set).into_iter().nth_back(black_box(n))
 }
 
 #[library_benchmark]
@@ -156,12 +115,12 @@ fn create_from_fn() -> BitSet<4> {
 
 library_benchmark_group!(
     name = sum_elements;
-    benchmarks = sum_all_elements_1, sum_all_elements_4, sum_all_elements_back_1, sum_all_elements_back_4, sum_all_elements_fold_1, sum_all_elements_fold_4, sum_all_elements_rfold_1, sum_all_elements_rfold_4, sum_half_elements, sum_half_elements_fold
+    benchmarks = sum_all_elements_with_sum, sum_all_elements_next, sum_all_elements_next_back, sum_all_elements_fold, sum_all_elements_rfold
 );
 
 library_benchmark_group!(
     name = nth;
-    benchmarks = nth_half_10, nth_all_100, nth_back_half_10, nth_back_all_100
+    benchmarks = nth_forward, nth_back
 );
 
 library_benchmark_group!(
