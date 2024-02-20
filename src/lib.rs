@@ -584,8 +584,25 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
     {
         let mut total = 0u32;
 
-        for (index, word) in self.inner.0.into_iter().enumerate() {
+        for index in 0..WORDS{            
+            let mut word = self.inner.0[index];
             let mut multiplier = (index as u32 * u64::BITS);
+
+            // while word != 0{
+            //     let isolated_lsb = word & (0u64.wrapping_sub(word));
+            //     let temp = word.wrapping_add(isolated_lsb);
+            //     let mask = (temp & 0u64.wrapping_sub(temp)) .wrapping_sub(1);
+            //     let least_signigicant_chunk = word & mask;
+            //     let ones = least_signigicant_chunk.count_ones();
+            //     total += ((multiplier + word.trailing_zeros()) * ones);
+            //     total += ((ones * (ones - 1)) / 2);
+                
+
+
+            //     word &= !mask;
+            // }
+
+
             if word == u64::MAX {
                 total += word.count_ones() * multiplier;
                 total += 2016; //sum of 0..64
@@ -598,9 +615,8 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
                     multiplier += zeros;
                     let ones = value.trailing_ones(); //there must be some or we wouldn't have shifted right
                     value >>= ones; //cannot overflow as we checked for u64::MAX
-                    total += (ones * multiplier);
 
-                    total += (1 << ones) - 2;
+                    total += ((ones * (ones + multiplier + multiplier - 1)) / 2);
 
                     multiplier += ones;
                 }
@@ -1140,15 +1156,15 @@ pub mod tests {
 
     #[test]
     fn test_sum() {
-        let set = BitSet::<4>::from_fn(|x| x % 7 == 0);
-        let expected_set = Vec::from_iter((0..256usize).filter(|x| x % 7 == 0));
+        let set = BitSet::<4>::from_fn(|x| x % 7 == 0 || x % 4 ==0);
+        let expected_set = Vec::from_iter((0..256usize).filter(|x| x % 7 == 0 || x % 4 ==0));
 
         let sum: usize = set.into_iter().sum();
         let expected_sum = expected_set.into_iter().sum();
 
         assert_eq!(sum, expected_sum);
 
-        assert_eq!(BitSet::<4>::ALL.into_iter().sum::<usize>(), 32640);
+        assert_eq!(BitSet::<4>::ALL.into_iter().sum::<usize>(), (0..256).sum());
     }
 
     #[test]
