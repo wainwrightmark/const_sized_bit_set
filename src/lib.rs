@@ -318,16 +318,16 @@ impl<const WORDS: usize> BitSet<WORDS> {
     #[must_use]
     #[inline]
     pub fn pop(&mut self) -> Option<usize> {
-        let mut word = 0;
-        while word < WORDS {
-            let tz = self.0[word].trailing_zeros();
-            if tz < u64::BITS {
-                let r = tz as usize + (word * (u64::BITS as usize));
-                self.0[word] &= !(1u64 << tz);
+        for word_index in 0..=Self::LAST_WORD {
+            let word = self.0[word_index];
+            if word != 0 {
+                let tz = word.trailing_zeros();
+                let r = tz as usize + (word_index * (u64::BITS as usize));
+                let t = word & (0u64.wrapping_sub(word));
+                self.0[word_index] ^= t;
 
                 return Some(r);
             }
-            word += 1;
         }
         None
     }
@@ -336,16 +336,20 @@ impl<const WORDS: usize> BitSet<WORDS> {
     #[must_use]
     #[inline]
     pub fn pop_last(&mut self) -> Option<usize> {
-        let mut word = Self::LAST_WORD;
+        let mut word_index = Self::LAST_WORD;
 
         loop {
-            if let Some(index) = (u64::BITS - 1).checked_sub(self.0[word].leading_zeros()) {
-                let r = index as usize + (word * (u64::BITS as usize));
-                self.0[word] &= !(1u64 << index);
+            let word = self.0[word_index];
+
+            if word != 0 {
+                let index = (u64::BITS - 1) - word.leading_zeros();
+                let r = index as usize + (word_index * (u64::BITS as usize));
+                self.0[word_index] &= !(1u64 << index);
                 return Some(r);
             }
-            if let Some(nw) = word.checked_sub(1) {
-                word = nw;
+
+            if let Some(nw) = word_index.checked_sub(1) {
+                word_index = nw;
             } else {
                 return None;
             }
