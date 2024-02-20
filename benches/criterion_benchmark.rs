@@ -151,13 +151,14 @@ pub fn nth_benchmark(c: &mut Criterion) {
 
 criterion_group!(
     benches,
+    sum_with_fold_all_back_benchmark,
     sum_with_fold_benchmark,
     nth_benchmark,
     sum_benchmark,
     
     from_fn_benchmark,
     sum_all_back_benchmark,
-    sum_with_fold_all_back_benchmark,
+    
 );
 criterion_main!(benches);
 

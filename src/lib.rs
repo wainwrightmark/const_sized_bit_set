@@ -553,7 +553,8 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
     {
         let mut accum = init;
 
-        for (index, mut word) in self.inner.0.into_iter().enumerate() {
+        for index in 0..WORDS {
+            let mut word = self.inner.0[index];
             let mut offset = index * (u64::BITS as usize);
             if word == u64::MAX {
                 for v in offset..(offset + (u64::BITS as usize)) {
@@ -584,7 +585,7 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
     {
         let mut total = 0u32;
 
-        for index in 0..WORDS{            
+        for index in 0..WORDS {
             let mut word = self.inner.0[index];
             let mut multiplier = (index as u32 * u64::BITS);
 
@@ -596,12 +597,9 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
             //     let ones = least_signigicant_chunk.count_ones();
             //     total += ((multiplier + word.trailing_zeros()) * ones);
             //     total += ((ones * (ones - 1)) / 2);
-                
-
 
             //     word &= !mask;
             // }
-
 
             if word == u64::MAX {
                 total += word.count_ones() * multiplier;
@@ -682,11 +680,12 @@ impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
         F: FnMut(B, Self::Item) -> B,
     {
         let mut accum = init;
+        let mut index = WORDS;
+        for mut word in self.inner.0.into_iter().rev() {
+            let mut offset = index * (u64::BITS as usize);
 
-        for (index, mut word) in self.inner.0.into_iter().enumerate().rev() {
-            let mut offset = (index + 1) * (u64::BITS as usize);
             if word == u64::MAX {
-                for v in ((index * (u64::BITS as usize))..offset).rev() {
+                for v in ((offset - (u64::BITS as usize))..offset).rev() {
                     accum = f(accum, v);
                 }
             } else {
@@ -702,6 +701,7 @@ impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
                     word <<= leading_ones;
                 }
             }
+            index -= 1;
         }
         accum
     }
@@ -1156,8 +1156,8 @@ pub mod tests {
 
     #[test]
     fn test_sum() {
-        let set = BitSet::<4>::from_fn(|x| x % 7 == 0 || x % 4 ==0);
-        let expected_set = Vec::from_iter((0..256usize).filter(|x| x % 7 == 0 || x % 4 ==0));
+        let set = BitSet::<4>::from_fn(|x| x % 7 == 0 || x % 4 == 0);
+        let expected_set = Vec::from_iter((0..256usize).filter(|x| x % 7 == 0 || x % 4 == 0));
 
         let sum: usize = set.into_iter().sum();
         let expected_sum = expected_set.into_iter().sum();
