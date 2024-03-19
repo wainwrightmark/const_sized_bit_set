@@ -8,7 +8,7 @@ pub fn from_fn_benchmark(c: &mut Criterion) {
         BitSet::<W>::from_fn(|x| x % modulo == 0)
     }
 
-    group.throughput(criterion::Throughput::Elements(u64::BITS as u64 * 1));
+    group.throughput(criterion::Throughput::Elements(u64::BITS as u64));
     group.bench_with_input(BenchmarkId::from_parameter(1), &(), |b, &()| {
         b.iter(|| create_from_fn::<1>(black_box(2)));
     });
@@ -31,7 +31,7 @@ pub fn sum_benchmark(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("Sum_all");
 
-    group.throughput(criterion::Throughput::Elements(u64::BITS as u64 * 1));
+    group.throughput(criterion::Throughput::Elements(u64::BITS as u64));
     group.bench_with_input(BenchmarkId::from_parameter(1), &(), |b, &()| {
         b.iter(|| sum_elements::<1>(black_box(BitSet::ALL)));
     });
@@ -63,7 +63,7 @@ pub fn sum_all_back_benchmark(c: &mut Criterion) {
         sum
     }
 
-    group.throughput(criterion::Throughput::Elements(u64::BITS as u64 * 1));
+    group.throughput(criterion::Throughput::Elements(u64::BITS as u64));
     group.bench_with_input(BenchmarkId::from_parameter(1), &(), |b, &()| {
         b.iter(|| sum_elements_back::<1>(black_box(BitSet::ALL)));
     });
@@ -83,7 +83,7 @@ pub fn sum_with_fold_benchmark(c: &mut Criterion) {
 
     let mut group = c.benchmark_group("Sum_with_fold_all");
 
-    group.throughput(criterion::Throughput::Elements(u64::BITS as u64 * 1));
+    group.throughput(criterion::Throughput::Elements(u64::BITS as u64));
     group.bench_with_input(BenchmarkId::from_parameter(1), &(), |b, &()| {
         b.iter(|| sum_with_fold_elements::<1>(black_box(BitSet::ALL)));
     });
@@ -111,7 +111,7 @@ pub fn sum_with_fold_all_back_benchmark(c: &mut Criterion) {
         set.into_iter().rfold(0, |acc, x| acc + x)
     }
 
-    group.throughput(criterion::Throughput::Elements(u64::BITS as u64 * 1));
+    group.throughput(criterion::Throughput::Elements(u64::BITS as u64));
     group.bench_with_input(BenchmarkId::from_parameter(1), &(), |b, &()| {
         b.iter(|| sum_with_fold_elements_back::<1>(black_box(BitSet::ALL)));
     });
@@ -155,11 +155,10 @@ criterion_group!(
     sum_with_fold_benchmark,
     nth_benchmark,
     sum_benchmark,
-    
     from_fn_benchmark,
     sum_all_back_benchmark,
-    
 );
 criterion_main!(benches);
 
-const HALF_EMPTY_SET: BitSet<1> = BitSet::from_inner([0b101010101010101010101010101010101010101010101010101010101010101]);
+const HALF_EMPTY_SET: BitSet<1> =
+    BitSet::from_inner([0b101010101010101010101010101010101010101010101010101010101010101]);

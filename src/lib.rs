@@ -1,6 +1,7 @@
 #![cfg_attr(not(any(test, feature = "std")), no_std)]
 #![deny(warnings, dead_code, unused_imports, unused_mut)]
 #![warn(clippy::pedantic)]
+#![allow(clippy::double_must_use)]
 mod n_choose_k;
 
 use core::fmt::{Debug, Write};
@@ -47,6 +48,8 @@ impl<const WORDS: usize> Default for BitSet<WORDS> {
     }
 }
 
+const WORD_BITS: usize = u64::BITS as usize;
+
 impl<const WORDS: usize> BitSet<WORDS> {
     /// The set where all tiles are missing
     pub const EMPTY: Self = { Self([0; WORDS]) };
@@ -60,7 +63,7 @@ impl<const WORDS: usize> BitSet<WORDS> {
     #[must_use]
     pub fn from_fn<F: FnMut(usize) -> bool>(mut cb: F) -> Self {
         let mut result = Self::default();
-        for x in (0..(WORDS * (u64::BITS as usize))).filter(|x| cb(*x)) {
+        for x in (0..(WORDS * (WORD_BITS))).filter(|x| cb(*x)) {
             result.insert(x);
         }
 
@@ -88,7 +91,7 @@ impl<const WORDS: usize> BitSet<WORDS> {
             }
             word += 1;
         }
-        return true;
+        true
     }
 
     #[must_use]
@@ -116,8 +119,9 @@ impl<const WORDS: usize> BitSet<WORDS> {
     /// PANICS if `value` is out of range
     #[inline]
     pub fn insert(&mut self, value: usize) -> bool {
-        let word = value / u64::BITS as usize;
-        let shift = (value % u64::BITS as usize) as u32;
+        let word = value / WORD_BITS;
+        #[allow(clippy::cast_possible_truncation)]
+        let shift = (value % WORD_BITS) as u32;
         let mask = 1u64 << shift;
         let r = self.0[word] & mask == 0;
 
@@ -131,8 +135,9 @@ impl<const WORDS: usize> BitSet<WORDS> {
     /// PANICS if `value` is out of range
     #[inline]
     pub fn remove(&mut self, value: usize) -> bool {
-        let word = value / u64::BITS as usize;
-        let shift = (value % u64::BITS as usize) as u32;
+        let word = value / WORD_BITS;
+        #[allow(clippy::cast_possible_truncation)]
+        let shift = (value % WORD_BITS) as u32;
         let mask = 1u64 << shift;
         let r = self.0[word] & mask != 0;
 
@@ -157,8 +162,9 @@ impl<const WORDS: usize> BitSet<WORDS> {
     #[must_use]
     #[inline]
     pub const fn with_inserted(&self, value: usize) -> Self {
-        let word = value / u64::BITS as usize;
-        let shift = (value % u64::BITS as usize) as u32;
+        let word = value / WORD_BITS;
+        #[allow(clippy::cast_possible_truncation)]
+        let shift = (value % WORD_BITS) as u32;
 
         let mut arr = self.0;
         arr[word] = self.0[word] | (1u64 << shift);
@@ -170,8 +176,9 @@ impl<const WORDS: usize> BitSet<WORDS> {
     #[must_use]
     #[inline]
     pub const fn with_removed(&self, value: usize) -> Self {
-        let word = value / u64::BITS as usize;
-        let shift = (value % u64::BITS as usize) as u32;
+        let word = value / WORD_BITS;
+        #[allow(clippy::cast_possible_truncation)]
+        let shift = (value % WORD_BITS) as u32;
 
         let mut arr = self.0;
         arr[word] = self.0[word] & !(1u64 << shift);
@@ -183,8 +190,9 @@ impl<const WORDS: usize> BitSet<WORDS> {
     #[inline]
     #[doc(alias = "get_bit")]
     pub const fn contains(&self, index: usize) -> bool {
-        let word_index = index / u64::BITS as usize;
-        let shift = (index % u64::BITS as usize) as u32;
+        let word_index = index / WORD_BITS;
+        #[allow(clippy::cast_possible_truncation)]
+        let shift = (index % WORD_BITS) as u32;
 
         if word_index >= WORDS {
             return false;
@@ -284,7 +292,7 @@ impl<const WORDS: usize> BitSet<WORDS> {
         while word < WORDS {
             let tz = self.0[word].trailing_zeros();
             if tz < u64::BITS {
-                return Some(tz as usize + (word * (u64::BITS as usize)));
+                return Some(tz as usize + (word * (WORD_BITS)));
             }
             word += 1;
         }
@@ -300,7 +308,7 @@ impl<const WORDS: usize> BitSet<WORDS> {
 
         loop {
             if let Some(index) = (u64::BITS - 1).checked_sub(self.0[word].leading_zeros()) {
-                let r = index as usize + (word * (u64::BITS as usize));
+                let r = index as usize + (word * (WORD_BITS));
                 return Some(r);
             }
             if let Some(nw) = word.checked_sub(1) {
@@ -320,7 +328,7 @@ impl<const WORDS: usize> BitSet<WORDS> {
             let word = self.0[word_index];
             if word != 0 {
                 let tz = word.trailing_zeros();
-                let r = tz as usize + (word_index * (u64::BITS as usize));
+                let r = tz as usize + (word_index * (WORD_BITS));
                 let t = word & (0u64.wrapping_sub(word));
                 self.0[word_index] ^= t;
 
@@ -342,7 +350,7 @@ impl<const WORDS: usize> BitSet<WORDS> {
 
             if word != 0 {
                 let index = (u64::BITS - 1) - word.leading_zeros();
-                let r = index as usize + (word_index * (u64::BITS as usize));
+                let r = index as usize + (word_index * (WORD_BITS));
                 self.0[word_index] &= !(1u64 << index);
                 return Some(r);
             }
@@ -375,20 +383,17 @@ impl<const WORDS: usize> BitSet<WORDS> {
             }
         };
 
-        let mut set_remaining = self.clone();
+        let mut set_remaining = *self;
 
         while let Some(next) = set_remaining.pop_last() {
             //let number_containing = n_choose_k(remaining_count - 1, remaining_needed - 1);
-            match index.checked_sub(n_c_k.result()) {
-                Some(new_index) => {
-                    index = new_index;
-                }
-                None => {
-                    new_set.set_bit(next, true);
-                    match n_c_k.try_decrement_k() {
-                        Some(r) => n_c_k = r,
-                        None => return new_set,
-                    }
+            if let Some(new_index) = index.checked_sub(n_c_k.result()) {
+                index = new_index;
+            } else {
+                new_set.set_bit(next, true);
+                match n_c_k.try_decrement_k() {
+                    Some(r) => n_c_k = r,
+                    None => return new_set,
                 }
             }
             match n_c_k.try_decrement_n() {
@@ -397,21 +402,21 @@ impl<const WORDS: usize> BitSet<WORDS> {
             }
         }
 
-        return new_set;
+        new_set
     }
 
+    #[must_use]
     pub fn iter_subsets(
         &self,
         subset_size: u32,
-    ) -> impl Iterator<Item = Self>
-           + FusedIterator
+    ) -> impl FusedIterator<Item = Self>
            + DoubleEndedIterator
            + ExactSizeIterator
            + Debug
            + Clone
            + 'static {
         let member_count = n_choose_k(self.count(), subset_size);
-        let s = self.clone();
+        let s = *self;
 
         (0..member_count)
             .map(move |index| s.subset_index_to_members(subset_size, index, member_count))
@@ -444,14 +449,14 @@ impl<const WORDS: usize> IntoIterator for BitSet<WORDS> {
 }
 
 #[must_use]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct BitSetIter<const WORDS: usize> {
     inner: BitSet<WORDS>,
 }
 
 impl<const WORDS: usize> ExactSizeIterator for BitSetIter<WORDS> {
     fn len(&self) -> usize {
-        self.count()
+        self.inner.count() as usize
     }
 }
 impl<const WORDS: usize> FusedIterator for BitSetIter<WORDS> {}
@@ -466,7 +471,7 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        let c = self.count();
+        let c = self.len();
         (c, Some(c))
     }
 
@@ -475,7 +480,7 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
     where
         Self: Sized,
     {
-        self.inner.count() as usize
+        self.len()
     }
 
     #[inline]
@@ -507,6 +512,7 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         let mut word_index = 0;
+        #[allow(clippy::cast_possible_truncation)]
         let mut n = n as u32;
         while word_index < WORDS {
             if let Some(new_n) = n.checked_sub(self.inner.0[word_index].count_ones()) {
@@ -522,21 +528,18 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
                     word >>= tz;
                     shift += tz;
                     let to = word.trailing_ones();
-                    match n.checked_sub(to) {
-                        Some(new_n) => {
-                            n = new_n;
-                            word >>= to;
-                            shift += to;
-                        }
-                        None => {
-                            word >>= n + 1;
-                            let r = (shift + n) as usize + (word_index * (u64::BITS as usize));
+                    if let Some(new_n) = n.checked_sub(to) {
+                        n = new_n;
+                        word >>= to;
+                        shift += to;
+                    } else {
+                        word >>= n + 1;
+                        let r = (shift + n) as usize + (word_index * (WORD_BITS));
 
-                            word <<= shift + n + 1;
-                            self.inner.0[word_index] = word;
+                        word <<= shift + n + 1;
+                        self.inner.0[word_index] = word;
 
-                            return Some(r);
-                        }
+                        return Some(r);
                     }
                 }
             }
@@ -554,9 +557,9 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
 
         for index in 0..WORDS {
             let mut word = self.inner.0[index];
-            let mut offset = index * (u64::BITS as usize);
+            let mut offset = index * (WORD_BITS);
             if word == u64::MAX {
-                for v in offset..(offset + (u64::BITS as usize)) {
+                for v in offset..(offset + (WORD_BITS)) {
                     accum = f(accum, v);
                 }
             } else {
@@ -586,19 +589,8 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
 
         for index in 0..WORDS {
             let word = self.inner.0[index];
+            #[allow(clippy::cast_possible_truncation)]
             let mut multiplier = index as u32 * u64::BITS;
-
-            // while word != 0{
-            //     let isolated_lsb = word & (0u64.wrapping_sub(word));
-            //     let temp = word.wrapping_add(isolated_lsb);
-            //     let mask = (temp & 0u64.wrapping_sub(temp)) .wrapping_sub(1);
-            //     let least_signigicant_chunk = word & mask;
-            //     let ones = least_signigicant_chunk.count_ones();
-            //     total += ((multiplier + word.trailing_zeros()) * ones);
-            //     total += ((ones * (ones - 1)) / 2);
-
-            //     word &= !mask;
-            // }
 
             if word == u64::MAX {
                 total += word.count_ones() * multiplier;
@@ -637,6 +629,7 @@ impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
 
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         let mut word_index = BitSet::<WORDS>::LAST_WORD;
+        #[allow(clippy::cast_possible_truncation)]
         let mut n = n as u32;
         loop {
             if let Some(new_n) = n.checked_sub(self.inner.0[word_index].count_ones()) {
@@ -651,22 +644,18 @@ impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
                     word <<= lz;
                     shift += lz;
                     let leading_ones = word.leading_ones();
-                    match n.checked_sub(leading_ones) {
-                        Some(new_n) => {
-                            n = new_n;
-                            word <<= leading_ones;
-                            shift += leading_ones;
-                        }
-                        None => {
-                            word <<= n + 1;
-                            let r = (u64::BITS - (shift + n + 1)) as usize
-                                + (word_index * (u64::BITS as usize));
+                    if let Some(new_n) = n.checked_sub(leading_ones) {
+                        n = new_n;
+                        word <<= leading_ones;
+                        shift += leading_ones;
+                    } else {
+                        word <<= n + 1;
+                        let r = (u64::BITS - (shift + n + 1)) as usize + (word_index * (WORD_BITS));
 
-                            word >>= shift + n + 1;
-                            self.inner.0[word_index] = word;
+                        word >>= shift + n + 1;
+                        self.inner.0[word_index] = word;
 
-                            return Some(r);
-                        }
+                        return Some(r);
                     }
                 }
             }
@@ -681,10 +670,10 @@ impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
         let mut accum = init;
         let mut index = WORDS;
         for mut word in self.inner.0.into_iter().rev() {
-            let mut offset = index * (u64::BITS as usize);
+            let mut offset = index * (WORD_BITS);
 
             if word == u64::MAX {
-                for v in ((offset - (u64::BITS as usize))..offset).rev() {
+                for v in ((offset - (WORD_BITS))..offset).rev() {
                     accum = f(accum, v);
                 }
             } else {
@@ -718,7 +707,7 @@ pub mod tests {
 
         assert_eq!(128, evens.count());
         let iter = evens.into_iter();
-        assert_eq!(iter.count(), 128);
+        assert_eq!(iter.len(), 128);
 
         let items: Vec<usize> = iter.collect();
         let expected: Vec<usize> = (0..128usize).map(|x| x * 2).collect();
@@ -730,12 +719,12 @@ pub mod tests {
     pub fn from_iter_4() {
         let expected: Vec<usize> = (0..52usize).map(|x| x * 5).collect();
 
-        let set = BitSet::<4>::from_iter(expected.iter().cloned());
+        let set = BitSet::<4>::from_iter(expected.iter().copied());
 
         assert_eq!(52, set.count());
 
         let iter = set.into_iter();
-        assert_eq!(iter.count(), 52);
+        assert_eq!(iter.len(), 52);
         assert_eq!(iter.size_hint(), (52, Some(52)));
 
         let items: Vec<usize> = iter.collect();
@@ -748,7 +737,7 @@ pub mod tests {
         let multiples_of_5: Vec<usize> = (0..52usize).map(|x| x * 5).collect();
         let multiples_of_4: Vec<usize> = (0..64usize).map(|x| x * 4).collect();
 
-        let mut set = BitSet::<4>::from_iter(multiples_of_5.iter().cloned());
+        let mut set = BitSet::<4>::from_iter(multiples_of_5.iter().copied());
         set.extend(multiples_of_4);
 
         assert_eq!(103, set.count());
@@ -762,12 +751,12 @@ pub mod tests {
     pub fn reverse_iter_4() {
         let expected: Vec<usize> = (0..52usize).map(|x| x * 5).rev().collect();
 
-        let set = BitSet::<4>::from_iter(expected.iter().cloned());
+        let set = BitSet::<4>::from_iter(expected.iter().copied());
 
         assert_eq!(52, set.count());
 
         let iter = set.into_iter();
-        assert_eq!(iter.count(), 52);
+        assert_eq!(iter.len(), 52);
         assert_eq!(iter.size_hint(), (52, Some(52)));
 
         let items: Vec<usize> = iter.rev().collect();
@@ -795,7 +784,7 @@ pub mod tests {
         let evens = BitSet::<4>::from_fn(|x| x % 2 == 0);
         let inner = evens.into_inner();
 
-        assert_eq!(inner, [6148914691236517205; 4]);
+        assert_eq!(inner, [6_148_914_691_236_517_205; 4]);
         let again = BitSet::from_inner(inner);
 
         assert_eq!(evens, again);
@@ -835,7 +824,7 @@ pub mod tests {
         let actual: Vec<_> = my_set.into_iter().collect();
         let expected: Vec<_> = expected.into_iter().collect();
 
-        assert_eq!(actual, expected)
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -857,7 +846,7 @@ pub mod tests {
         let actual: Vec<_> = my_set.into_iter().collect();
         let expected: Vec<_> = expected.into_iter().collect();
 
-        assert_eq!(actual, expected)
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -878,7 +867,7 @@ pub mod tests {
         let actual: Vec<_> = my_set.into_iter().collect();
         let expected: Vec<_> = expected.into_iter().collect();
 
-        assert_eq!(actual, expected)
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -975,10 +964,10 @@ pub mod tests {
             &[
                 Token::NewtypeStruct { name: "BitSet" },
                 Token::Tuple { len: 4 },
-                Token::U64(6148914691236517205),
-                Token::U64(12297829382473034410),
-                Token::U64(6148914691236517205),
-                Token::U64(12297829382473034410),
+                Token::U64(6_148_914_691_236_517_205),
+                Token::U64(12_297_829_382_473_034_410),
+                Token::U64(6_148_914_691_236_517_205),
+                Token::U64(12_297_829_382_473_034_410),
                 Token::TupleEnd,
             ],
         );
@@ -988,10 +977,7 @@ pub mod tests {
     fn test_first4() {
         let mut set = BitSet::<4>::from_fn(|x| x % 2 == 0 || x % 5 == 0);
 
-        let expected: Vec<_> = (0..256)
-            .into_iter()
-            .filter(|x| x % 2 == 0 || x % 5 == 0)
-            .collect();
+        let expected: Vec<_> = (0..256).filter(|x| x % 2 == 0 || x % 5 == 0).collect();
 
         let mut actual: Vec<_> = Vec::default();
 
@@ -1008,7 +994,6 @@ pub mod tests {
         let mut set = BitSet::<4>::from_fn(|x| x % 2 == 0 || x % 5 == 0);
 
         let expected: Vec<_> = (0..256)
-            .into_iter()
             .filter(|x| x % 2 == 0 || x % 5 == 0)
             .rev()
             .collect();
@@ -1027,10 +1012,7 @@ pub mod tests {
     fn test_pop4() {
         let mut set = BitSet::<4>::from_fn(|x| x % 2 == 0 || x % 5 == 0);
 
-        let expected: Vec<_> = (0..256)
-            .into_iter()
-            .filter(|x| x % 2 == 0 || x % 5 == 0)
-            .collect();
+        let expected: Vec<_> = (0..256).filter(|x| x % 2 == 0 || x % 5 == 0).collect();
 
         let mut actual: Vec<_> = Vec::default();
 
@@ -1046,7 +1028,6 @@ pub mod tests {
         let mut set = BitSet::<4>::from_fn(|x| x % 2 == 0 || x % 5 == 0);
 
         let expected: Vec<_> = (0..256)
-            .into_iter()
             .filter(|x| x % 2 == 0 || x % 5 == 0)
             .rev()
             .collect();
@@ -1094,7 +1075,7 @@ pub mod tests {
         for n in [0, 1, 10, 2, 3, 0, 0, 2, 3] {
             let expected = expected_iter.nth(n);
             let actual = iter.nth(n);
-            assert_eq!(expected, actual)
+            assert_eq!(expected, actual);
         }
     }
 
@@ -1109,7 +1090,7 @@ pub mod tests {
         for n in [0, 1, 10, 2, 3, 0, 0, 2, 3] {
             let expected = expected_iter.nth_back(n);
             let actual = iter.nth_back(n);
-            assert_eq!(expected, actual)
+            assert_eq!(expected, actual);
         }
     }
 
@@ -1129,7 +1110,7 @@ pub mod tests {
                 vec
             }),
             Vec::from_iter(0..256)
-        )
+        );
     }
 
     #[test]
@@ -1148,7 +1129,7 @@ pub mod tests {
                 vec
             }),
             Vec::from_iter((0..256).rev())
-        )
+        );
     }
 
     #[test]
@@ -1170,7 +1151,7 @@ pub mod tests {
 
         assert_eq!(32, evens.count());
         let iter = evens.into_iter();
-        assert_eq!(iter.count(), 32);
+        assert_eq!(iter.len(), 32);
 
         let items: Vec<usize> = iter.collect();
         let expected: Vec<usize> = (0..32usize).map(|x| x * 2).collect();
@@ -1182,12 +1163,12 @@ pub mod tests {
     pub fn from_iter_1() {
         let expected: Vec<usize> = (0..13usize).map(|x| x * 5).collect();
 
-        let set = BitSet::<1>::from_iter(expected.iter().cloned());
+        let set = BitSet::<1>::from_iter(expected.iter().copied());
 
         assert_eq!(13, set.count());
 
         let iter = set.into_iter();
-        assert_eq!(iter.count(), 13);
+        assert_eq!(iter.len(), 13);
         assert_eq!(iter.size_hint(), (13, Some(13)));
 
         let items: Vec<usize> = iter.collect();
@@ -1199,12 +1180,12 @@ pub mod tests {
     pub fn reverse_iter_1() {
         let expected: Vec<usize> = (0..13usize).map(|x| x * 5).rev().collect();
 
-        let set = BitSet::<1>::from_iter(expected.iter().cloned());
+        let set = BitSet::<1>::from_iter(expected.iter().copied());
 
         assert_eq!(13, set.count());
 
         let iter = set.into_iter();
-        assert_eq!(iter.count(), 13);
+        assert_eq!(iter.len(), 13);
         assert_eq!(iter.size_hint(), (13, Some(13)));
 
         let items: Vec<usize> = iter.rev().collect();
@@ -1232,7 +1213,7 @@ pub mod tests {
         let evens = BitSet::<1>::from_fn(|x| x % 2 == 0);
         let inner = evens.into_inner();
 
-        assert_eq!(inner, [6148914691236517205; 1]);
+        assert_eq!(inner, [6_148_914_691_236_517_205; 1]);
         let again = BitSet::from_inner(inner);
 
         assert_eq!(evens, again);
@@ -1271,7 +1252,7 @@ pub mod tests {
         let actual: Vec<_> = my_set.into_iter().collect();
         let expected: Vec<_> = expected.into_iter().collect();
 
-        assert_eq!(actual, expected)
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -1291,7 +1272,7 @@ pub mod tests {
         let actual: Vec<_> = my_set.into_iter().collect();
         let expected: Vec<_> = expected.into_iter().collect();
 
-        assert_eq!(actual, expected)
+        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -1385,7 +1366,7 @@ pub mod tests {
             &[
                 Token::NewtypeStruct { name: "BitSet" },
                 Token::Tuple { len: 1 },
-                Token::U64(6148914691236517205),
+                Token::U64(6_148_914_691_236_517_205),
                 Token::TupleEnd,
             ],
         );
@@ -1395,10 +1376,7 @@ pub mod tests {
     fn test_first1() {
         let mut set = BitSet::<1>::from_fn(|x| x % 2 == 0 || x % 5 == 0);
 
-        let expected: Vec<_> = (0..64)
-            .into_iter()
-            .filter(|x| x % 2 == 0 || x % 5 == 0)
-            .collect();
+        let expected: Vec<_> = (0..64).filter(|x| x % 2 == 0 || x % 5 == 0).collect();
 
         let mut actual: Vec<_> = Vec::default();
 
@@ -1414,11 +1392,7 @@ pub mod tests {
     fn test_last1() {
         let mut set = BitSet::<1>::from_fn(|x| x % 2 == 0 || x % 5 == 0);
 
-        let expected: Vec<_> = (0..64)
-            .into_iter()
-            .filter(|x| x % 2 == 0 || x % 5 == 0)
-            .rev()
-            .collect();
+        let expected: Vec<_> = (0..64).filter(|x| x % 2 == 0 || x % 5 == 0).rev().collect();
 
         let mut actual: Vec<_> = Vec::default();
 
@@ -1434,10 +1408,7 @@ pub mod tests {
     fn test_pop_1() {
         let mut set = BitSet::<1>::from_fn(|x| x % 2 == 0 || x % 5 == 0);
 
-        let expected: Vec<_> = (0..64)
-            .into_iter()
-            .filter(|x| x % 2 == 0 || x % 5 == 0)
-            .collect();
+        let expected: Vec<_> = (0..64).filter(|x| x % 2 == 0 || x % 5 == 0).collect();
 
         let mut actual: Vec<_> = Vec::default();
 
@@ -1452,11 +1423,7 @@ pub mod tests {
     fn test_pop_last1() {
         let mut set = BitSet::<1>::from_fn(|x| x % 2 == 0 || x % 5 == 0);
 
-        let expected: Vec<_> = (0..64)
-            .into_iter()
-            .filter(|x| x % 2 == 0 || x % 5 == 0)
-            .rev()
-            .collect();
+        let expected: Vec<_> = (0..64).filter(|x| x % 2 == 0 || x % 5 == 0).rev().collect();
 
         let mut actual: Vec<_> = Vec::default();
 
@@ -1469,7 +1436,7 @@ pub mod tests {
 
     #[test]
     fn test_display() {
-        let mut set = BitSet::<2>::from_iter([0, 1, 99].into_iter());
+        let mut set = BitSet::<2>::from_iter([0, 1, 99]);
 
         set.remove(1);
         set.insert(100);
@@ -1479,17 +1446,17 @@ pub mod tests {
 
     #[test]
     fn test_iter_subsets() {
-        let set = BitSet::<1>::from_iter([0, 1, 2, 3, 4].into_iter());
+        let set = BitSet::<1>::from_iter([0, 1, 2, 3, 4]);
 
         for size in 0u32..=5 {
-            let iter = set.iter_subsets(size as u32);
+            let iter = set.iter_subsets(size);
             let expected_len = n_choose_k(set.count(), size);
             assert_eq!(iter.len(), expected_len as usize);
             let results: Vec<_> = iter.collect();
 
             assert_eq!(results.len(), expected_len as usize);
 
-            for r in results.iter() {
+            for r in &results {
                 assert_eq!(r.count(), size, "Result should have the correct size");
                 assert!(r.is_subset(&set), "Result should be a subset of the set");
             }

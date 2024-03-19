@@ -32,8 +32,8 @@ fn sum_all_elements_with_sum(set: BitSet<4>) -> usize {
 #[bench::random(RANDOM_SET)]
 fn sum_all_elements_next(set: BitSet<4>) -> usize {
     let mut acc = 0usize;
-    let mut iter = black_box(set).into_iter();
-    while let Some(x) = iter.next() {
+    let iter = black_box(set).into_iter();
+    for x in iter {
         acc = acc.wrapping_add(x);
     }
     acc
