@@ -1,5 +1,5 @@
 #[derive(Debug, Clone, PartialEq)]
-pub (crate) struct NChooseK {
+pub(crate) struct NChooseK {
     n: u32,
     k: u32,
     result: u32,
@@ -8,8 +8,8 @@ pub (crate) struct NChooseK {
 pub fn n_choose_k(n: u32, k: u32) -> u32 {
     let mut result = 1;
     for i in 0..(k.min(n - k)) {
-        result *= (n - i);
-        result /= (i + 1);
+        result *= n - i;
+        result /= i + 1;
     }
 
     result
@@ -18,9 +18,7 @@ pub fn n_choose_k(n: u32, k: u32) -> u32 {
 impl NChooseK {
     #[must_use]
     pub fn try_decrement_k(&self) -> Option<Self> {
-        //todo make try
         // when you change k - multiply by k then divide by n - new_k
-        let new = self.clone();
         let new_k = self.k.checked_sub(1)?;
 
         let new_result = (self.result * self.k) / (self.n - new_k);
@@ -49,14 +47,6 @@ impl NChooseK {
     pub fn new(n: u32, k: u32, result: u32) -> Self {
         debug_assert_eq!(result, n_choose_k(n, k));
         Self { n, k, result }
-    }
-
-    pub fn n(&self) -> u32 {
-        self.n
-    }
-
-    pub fn k(&self) -> u32 {
-        self.k
     }
 
     pub fn result(&self) -> u32 {

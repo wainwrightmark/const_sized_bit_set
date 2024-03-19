@@ -1,10 +1,10 @@
 #![cfg_attr(not(any(test, feature = "std")), no_std)]
-#![allow(warnings, dead_code, unused_imports, unused_mut)]
+#![deny(warnings, dead_code, unused_imports, unused_mut)]
 #![warn(clippy::pedantic)]
 mod n_choose_k;
 
 use core::fmt::{Debug, Write};
-use core::{iter::FusedIterator, ops::Shr};
+use core::iter::FusedIterator;
 use n_choose_k::n_choose_k;
 #[cfg(any(test, feature = "serde"))]
 use serde::{Deserialize, Serialize};
@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 /// A set whose members are unsigned integers in `0..(64 * WORDS)`
 /// Most operations are O(1)
 ///
+/// Sets are not ordered lexicographically
 /// Set `b` is considered greater than set `a` if the largest element that is contained in `a | b` but not `a & b` is in `b`.
 /// Therefore sets are ordered like [], [0], [1], [0,1], [2], [0,2], [1,2], [0,1,2]
 #[must_use]
@@ -23,19 +24,19 @@ pub struct BitSet<const WORDS: usize>(
 
 impl<const WORDS: usize> core::fmt::Display for BitSet<WORDS> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_char('[');
+        f.write_char('[')?;
         let mut write_commas: bool = false;
         for x in self.into_iter() {
             if write_commas {
-                f.write_char(',');
-                f.write_char(' ');
+                f.write_char(',')?;
+                f.write_char(' ')?;
             } else {
                 write_commas = true;
             }
-            core::fmt::Display::fmt(&x, f);
+            core::fmt::Display::fmt(&x, f)?;
         }
 
-        f.write_char(']');
+        f.write_char(']')?;
         Ok(())
     }
 }
@@ -65,22 +66,6 @@ impl<const WORDS: usize> BitSet<WORDS> {
 
         result
     }
-
-    // #[inline]
-    // #[must_use]
-    // pub fn from_fn<F: FnMut(usize) -> bool>(mut func: F) -> Self {
-    //     let mut result = Self::default();
-
-    //     for w in 0..WORDS{
-    //         for shift in 0..u64::BITS{
-    //             if func((w * u64::BITS as usize) + (shift as usize)){
-    //                 result.0[w] |= 1u64 << shift;
-    //             }
-    //         }
-    //     }
-
-    //     result
-    // }
 
     #[must_use]
     #[inline]
@@ -117,9 +102,6 @@ impl<const WORDS: usize> BitSet<WORDS> {
     /// PANICS if index is out of range
     #[inline]
     pub fn set_bit(&mut self, index: usize, bit: bool) {
-        let word = index / u64::BITS as usize;
-        let shift = (index % u64::BITS as usize) as u32;
-
         if bit {
             self.insert(index);
         } else {
@@ -171,7 +153,7 @@ impl<const WORDS: usize> BitSet<WORDS> {
         }
     }
 
-    /// PANICS if index is out of range
+    /// PANICS if value is out of range
     #[must_use]
     #[inline]
     pub const fn with_inserted(&self, value: usize) -> Self {
@@ -184,7 +166,7 @@ impl<const WORDS: usize> BitSet<WORDS> {
         Self(arr)
     }
 
-    /// PANICS if index is out of range
+    /// PANICS if value is out of range
     #[must_use]
     #[inline]
     pub const fn with_removed(&self, value: usize) -> Self {
@@ -348,7 +330,8 @@ impl<const WORDS: usize> BitSet<WORDS> {
         None
     }
 
-    /// The last element in this set
+    /// Removes the last (biggest) element of the set and returns it
+    /// Returns `None` if the set is empty
     #[must_use]
     #[inline]
     pub fn pop_last(&mut self) -> Option<usize> {
@@ -373,7 +356,6 @@ impl<const WORDS: usize> BitSet<WORDS> {
 
         // essentially reverse the order
         let mut index = n_c_k.result() - (index + 1);
-        let mut index = index;
         let mut new_set = Self::EMPTY;
         n_c_k = match n_c_k.try_decrement_k() {
             Some(r) => r,
@@ -489,7 +471,7 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
     }
 
     #[inline]
-    fn last(mut self) -> Option<Self::Item>
+    fn last(self) -> Option<Self::Item>
     where
         Self: Sized,
     {
@@ -627,8 +609,6 @@ impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
 
 #[cfg(test)]
 pub mod tests {
-    use serde::de::Expected;
-
     use crate::n_choose_k::*;
     use crate::BitSet;
     use std::collections::BTreeSet;
@@ -1362,9 +1342,12 @@ pub mod tests {
 
     #[test]
     fn test_display() {
-        let set = BitSet::<1>::from_iter([1, 2, 3, 4, 5].into_iter());
+        let mut set = BitSet::<2>::from_iter([0, 1, 99].into_iter());
 
-        assert_eq!(set.to_string(), "[1, 2, 3, 4, 5]");
+        set.remove(1);
+        set.insert(100);
+
+        assert_eq!(set.to_string(), "[0, 99, 100]");
     }
 
     #[test]
