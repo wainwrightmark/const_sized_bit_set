@@ -1,3 +1,4 @@
+use crate::SetElement;
 #[cfg(any(test, feature = "serde"))]
 use serde::{Deserialize, Serialize};
 
@@ -10,195 +11,128 @@ macro_rules! define_bit_set_n {
 
         impl $name {
             pub const EMPTY: Self = Self(0);
-            pub const ALL: Self = Self::EMPTY.negated();
-            pub const MAX_COUNT: u32 = <$inner>::BITS;
+            pub const ALL: Self = Self(<$inner>::MAX);
+            pub const MAX_COUNT: SetElement = <$inner>::BITS;
 
             /// Returns the number of elements in the set
             #[must_use]
             #[inline]
             #[doc(alias = "count")]
-            pub const fn len(&self) -> u32 {
+            pub const fn len_const(&self) -> SetElement {
                 self.0.count_ones()
             }
 
             /// The inner value of the set
             #[must_use]
             #[inline]
-            pub const fn inner(&self) -> $inner {
+            pub const fn inner_const(&self) -> $inner {
                 self.0
             }
 
             /// Creates a new set from an inner value
             #[must_use]
             #[inline]
-            pub const fn from_inner(inner: $inner) -> Self {
+            pub const fn from_inner_const(inner: $inner) -> Self {
                 Self(inner)
             }
 
-            /// Creates a new set from a function mapping each possible element to
-            /// a bool indicating whether or not it should be included
-            #[inline]
-            #[must_use]
-            pub fn from_fn<F: FnMut(u32) -> bool>(mut cb: F) -> Self {
-                let mut result = Self::default();
-                for x in (0..(Self::MAX_COUNT)).filter(|x| cb(*x)) {
-                    result.insert(x);
-                }
-
-                result
+            /// Whether this set contains the element
+            pub const fn contains_const(&self, element: SetElement) -> bool {
+                (self.0 >> element) & 1 == 1
             }
 
             /// Whether two sets are equal
             #[inline]
-            pub const fn eq(&self, rhs: &Self) -> bool {
+            pub const fn eq_const(&self, rhs: &Self) -> bool {
                 self.0 == rhs.0
-            }
-
-            /// Whether a set is empty
-            #[inline]
-            pub const fn is_empty(&self) -> bool {
-                self.0 == Self::EMPTY.0
             }
 
             /// Returns the negation of a set
             /// The negation contains exactly those elements which are not in the original set
-
-            #[must_use]
             #[inline]
-            pub const fn negated(&self) -> Self {
-                Self(!self.0)
+            pub const fn negate_const(&mut self) {
+                self.0 = !self.0
             }
 
             /// Insert an element into the set
+            /// Returns whether the element was inserted (it was not already present)
             #[inline]
-            pub const fn insert(&mut self, element: u32) {
-                self.0 = self.0 | 1 << element;
-            }
+            pub const fn insert_const(&mut self, element: SetElement) -> bool {
+                let mask = 1 << element;
+                let r = self.0 & mask == 0;
 
-            #[must_use]
-            #[inline]
-            pub const fn with_inserted(&self, element: u32) -> Self {
-                let mut s = *self;
-                s.insert(element);
-                s
+                self.0 |= mask;
+                r
             }
 
             /// Remove an element from the set
             #[inline]
-            pub const fn remove(&mut self, element: u32) {
-                self.0 = self.0 & !(1 << element);
-            }
-
-            #[must_use]
-            #[inline]
-            pub const fn with_removed(&self, element: u32) -> Self {
-                let mut s = *self;
-                s.remove(element);
-                s
-            }
-
-            #[inline]
-            pub const fn set_bit(&mut self, element: u32, bit: bool) {
-                if bit {
-                    self.insert(element);
-                } else {
-                    self.remove(element);
-                }
-            }
-
-            #[must_use]
-            #[inline]
-            pub const fn with_bit_set(&self, element: u32, bit: bool) -> Self {
-                if bit {
-                    self.with_inserted(element)
-                } else {
-                    self.with_removed(element)
-                }
+            pub const fn remove_const(&mut self, element: SetElement) -> bool {
+                let mask = 1 << element;
+                let r = self.0 & mask != 0;
+                self.0 &= !mask;
+                r
             }
 
             /// Create a set of the elements 0..n
-
             #[must_use]
             #[inline]
-            pub const fn from_first_n(n: u32) -> Self {
+            pub const fn from_first_n_const(n: SetElement) -> Self {
                 let inner = !(<$inner>::MAX << n);
                 Self(inner)
             }
 
             /// Swap the bits at i and j
             #[inline]
-            pub const fn swap_bits(&mut self, i: u32, j: u32) {
+            pub const fn swap_bits_const(&mut self, i: SetElement, j: SetElement) {
                 let x = (self.0 >> i ^ self.0 >> j) & 1;
                 self.0 ^= x << i | x << j;
             }
 
-            #[must_use]
             #[inline]
-            pub const fn with_bits_swapped(&self, i: u32, j: u32) -> Self {
-                let mut s = *self;
-                s.swap_bits(i, j);
-                s
+            pub const fn intersect_with_const(&mut self, rhs: &Self) {
+                self.0 &= rhs.0
             }
 
-            #[inline]
-            pub const fn intersect(&mut self, other: &Self) {
-                self.0 &= other.0
+            pub const fn union_with_const(&mut self, rhs: &Self) {
+                self.0 |= rhs.0
             }
 
-            #[must_use]
-            pub const fn with_intersection(&self, other: &Self) -> Self {
-                let mut s = *self;
-                s.intersect(other);
-                s
+            pub const fn except_with_const(&mut self, rhs: &Self) {
+                let mut o = *rhs;
+                o.negate_const();
+                self.intersect_with_const(&o)
             }
 
-            pub const fn union(&mut self, other: &Self) {
-                self.0 |= other.0
-            }
-
-            #[allow(dead_code)]
-            #[must_use]
-            pub const fn with_union(&self, other: &Self) -> Self {
-                let mut s = *self;
-                s.union(other);
-                s
-            }
-
-            pub const fn except(&mut self, other: &Self) {
-                self.intersect(&other.negated());
-            }
-
-            #[allow(dead_code)]
-            #[must_use]
-            pub const fn with_except(&self, other: &Self) -> Self {
-                let mut s = *self;
-                s.except(other);
-                s
+            pub const fn symmetric_difference_with_const(&mut self, rhs: &Self) {
+                self.0 ^= rhs.0
             }
 
             #[must_use]
             #[inline]
-            pub const fn is_subset(&self, rhs: &Self) -> bool {
-                self.with_intersection(rhs).0 == self.0
+            pub const fn is_subset_const(&self, rhs: &Self) -> bool {
+                let mut s = *self;
+                s.intersect_with_const(rhs);
+                s.eq_const(self)
             }
 
             #[must_use]
             #[inline]
-            pub const fn is_superset(&self, rhs: &Self) -> bool {
-                rhs.is_subset(self)
+            pub const fn is_superset_const(&self, rhs: &Self) -> bool {
+                rhs.is_subset_const(self)
             }
 
-            /// Whether this set contains the element
-            #[allow(dead_code)]
-            pub const fn contains(&self, element: u32) -> bool {
-                (self.0 >> element) & 1 == 1
+            pub const fn overlaps_const(&self, rhs: &Self) -> bool {
+                let mut s = *self;
+                s.intersect_with_const(rhs);
+                !s.eq_const(&Self::EMPTY)
             }
 
             /// Returns the first (minimum) element in this set
             #[must_use]
             #[inline]
-            #[doc(alias = "min")]
-            pub const fn first(&self) -> Option<u32> {
+            #[doc(alias = "min_const")]
+            pub const fn first_const(&self) -> Option<SetElement> {
                 if self.0 == 0 {
                     return None;
                 }
@@ -210,8 +144,8 @@ macro_rules! define_bit_set_n {
             /// Returns the first (minimum) element in this set
             #[must_use]
             #[inline]
-            #[doc(alias = "max")]
-            pub const fn last(&self) -> Option<u32> {
+            #[doc(alias = "max_const")]
+            pub const fn last_const(&self) -> Option<SetElement> {
                 if self.0 == 0 {
                     return None;
                 }
@@ -223,7 +157,7 @@ macro_rules! define_bit_set_n {
             /// Returns `None` if the set is empty
             #[must_use]
             #[inline]
-            pub const fn pop(&mut self) -> Option<u32> {
+            pub const fn pop_const(&mut self) -> Option<SetElement> {
                 if self.0 == 0 {
                     return None;
                 }
@@ -239,7 +173,7 @@ macro_rules! define_bit_set_n {
             /// Returns `None` if the set is empty
             #[must_use]
             #[inline]
-            pub const fn pop_last(&mut self) -> Option<u32> {
+            pub const fn pop_last_const(&mut self) -> Option<SetElement> {
                 if self.0 == 0 {
                     return None;
                 }
@@ -248,48 +182,18 @@ macro_rules! define_bit_set_n {
                 self.0 &= !(1 << element);
                 return Some(element);
             }
-
-            /// Return the set of minimal members according to a function#
-            #[must_use]
-            pub fn min_set_by_key<K: Ord>(&self, f: impl Fn(u32) -> K) -> Self {
-                let mut result_set = Self::EMPTY;
-                let mut s = *self;
-
-                let Some(first) = s.pop() else {
-                    return result_set;
-                };
-                let mut min = f(first);
-                result_set.insert(first);
-
-                while let Some(next) = s.pop() {
-                    let k = f(next);
-                    match k.cmp(&min) {
-                        core::cmp::Ordering::Less => {
-                            result_set = Self::EMPTY;
-                            result_set.insert(next);
-                            min = k;
-                        }
-                        core::cmp::Ordering::Equal => {
-                            result_set.insert(next);
-                        }
-                        core::cmp::Ordering::Greater => {}
-                    }
-                }
-
-                return result_set;
-            }
         }
 
-        impl Extend<u32> for $name {
-            fn extend<T: IntoIterator<Item = u32>>(&mut self, iter: T) {
+        impl Extend<SetElement> for $name {
+            fn extend<T: IntoIterator<Item = SetElement>>(&mut self, iter: T) {
                 for x in iter {
-                    self.insert(x);
+                    self.insert_const(x);
                 }
             }
         }
 
-        impl FromIterator<u32> for $name {
-            fn from_iter<T: IntoIterator<Item = u32>>(iter: T) -> Self {
+        impl FromIterator<SetElement> for $name {
+            fn from_iter<T: IntoIterator<Item = SetElement>>(iter: T) -> Self {
                 let mut set = Self::default();
                 set.extend(iter);
                 set
@@ -297,7 +201,7 @@ macro_rules! define_bit_set_n {
         }
 
         impl IntoIterator for $name {
-            type Item = u32;
+            type Item = SetElement;
 
             type IntoIter = $iter_name;
 
@@ -314,16 +218,16 @@ macro_rules! define_bit_set_n {
         impl core::iter::FusedIterator for $iter_name {}
 
         impl Iterator for $iter_name {
-            type Item = u32;
+            type Item = SetElement;
 
             #[inline]
             fn next(&mut self) -> Option<Self::Item> {
-                self.0.pop()
+                self.0.pop_const()
             }
 
             #[inline]
             fn size_hint(&self) -> (usize, Option<usize>) {
-                let c = self.0.len() as usize;
+                let c = self.0.len_const() as usize;
                 (c, Some(c))
             }
 
@@ -340,7 +244,7 @@ macro_rules! define_bit_set_n {
             where
                 Self: Sized,
             {
-                self.0.last()
+                self.0.last_const()
             }
 
             #[inline]
@@ -363,12 +267,12 @@ macro_rules! define_bit_set_n {
 
             #[inline]
             fn nth(&mut self, n: usize) -> Option<Self::Item> {
-                if (self.0.len() as usize) <= n {
+                if (self.0.len_const() as usize) <= n {
                     self.0 .0 = 0;
                     return None;
                 }
                 #[allow(clippy::cast_possible_truncation)]
-                let mut n = n as u32;
+                let mut n = n as SetElement;
                 let mut shift = 0;
                 loop {
                     let tz = self.0 .0.trailing_zeros();
@@ -434,7 +338,7 @@ macro_rules! define_bit_set_n {
                 let mut multiplier = 0;
 
                 if self.0 == $name::ALL {
-                    const MAX_COUNT: u32 = ($name::MAX_COUNT * ($name::MAX_COUNT - 1)) / 2;
+                    const MAX_COUNT: SetElement = ($name::MAX_COUNT * ($name::MAX_COUNT - 1)) / 2;
                     total += MAX_COUNT;
                 } else {
                     while value != 0 {
@@ -464,17 +368,17 @@ macro_rules! define_bit_set_n {
         impl DoubleEndedIterator for $iter_name {
             #[inline]
             fn next_back(&mut self) -> Option<Self::Item> {
-                self.0.pop_last()
+                self.0.pop_last_const()
             }
 
             fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-                if (self.0.len() as usize) <= n {
+                if (self.0.len_const() as usize) <= n {
                     self.0 .0 = 0;
                     return None;
                 }
 
                 #[allow(clippy::cast_possible_truncation)]
-                let mut n = n as u32;
+                let mut n = n as SetElement;
 
                 let mut shift = 0;
 
@@ -538,7 +442,7 @@ define_bit_set_n!(BitSet16, u16, BitSet16Iter);
 
 #[cfg(test)]
 mod tests {
-    use crate::bit_set_n::BitSet16;
+    use crate::{bit_set_n::BitSet16, bit_set_trait::BitSetTrait, SetElement};
 
     #[test]
     fn test_iter_last() {
@@ -638,12 +542,12 @@ mod tests {
         let expected_set =
             Vec::from_iter((0..(BitSet16::MAX_COUNT)).filter(|x| x % 7 == 0 || x % 4 == 0));
 
-        let sum: u32 = set.into_iter().sum();
+        let sum: SetElement = set.into_iter().sum();
         let expected_sum = expected_set.into_iter().sum();
 
         assert_eq!(sum, expected_sum);
 
-        assert_eq!(BitSet16::ALL.into_iter().sum::<u32>(), (0..16).sum());
+        assert_eq!(BitSet16::ALL.into_iter().sum::<SetElement>(), (0..16).sum());
     }
 
     #[test]
@@ -663,9 +567,9 @@ mod tests {
         assert!(BitSet16::from_inner(0b0000).is_empty());
 
         let set1 = BitSet16::from_inner(0b1110);
-        let negated = set1.negated();
+        let negated = set1.with_negated();
         assert_eq!(set1.with_union(&negated), BitSet16::ALL);
-        assert_eq!(set1.with_intersection(&negated), BitSet16::EMPTY);
+        assert_eq!(set1.with_intersect(&negated), BitSet16::EMPTY);
 
         assert_eq!(
             BitSet16::from_inner(0b0010).with_inserted(2),
@@ -693,7 +597,7 @@ mod tests {
 
         assert_eq!(
             BitSet16::from_inner(0b001),
-            BitSet16::from_inner(0b101).with_intersection(&BitSet16::from_inner(0b011))
+            BitSet16::from_inner(0b101).with_intersect(&BitSet16::from_inner(0b011))
         );
 
         assert_eq!(

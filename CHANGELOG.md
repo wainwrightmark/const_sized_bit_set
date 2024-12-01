@@ -11,8 +11,20 @@ Possible header types:
 
 [crates.io]: https://crates.io/crates/const_sized_bit_set
 
+## v0.2.0
+
+### Breaking Changes
+
+- `BitSet` is renamed `BitSetArray`
+- Set elements are `u32`, not `usize`
+- Added `BitSet` trait
+- Minimum supported rust version is now 1.83
+
+### Features
+
+- Added `BitSet` trait
+- Added `BitSet8`, `BitSet16`, `BitSet32`, `BitSet64`, `BitSet128`
+
 ## v0.1.0 (2023-03-19)
 
 - Initial Release on [crates.io] :tada:
-
-[crates.io]: https://crates.io/crates/const_sized_bit_set
