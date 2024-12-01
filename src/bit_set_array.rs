@@ -1162,7 +1162,7 @@ pub mod tests {
         let expected_set = Vec::from_iter((0..256usize).filter(|x| x % 7 == 0 || x % 4 == 0));
 
         let sum: usize = set.into_iter().sum();
-        let expected_sum = expected_set.into_iter().sum();
+        let expected_sum: usize = expected_set.into_iter().sum();
 
         assert_eq!(sum, expected_sum);
 

@@ -1,4 +1,4 @@
-use crate::{BitSet16, SetElement};
+use crate::{BitSet128, BitSet16, BitSet32, BitSet64, BitSet8, SetElement};
 
 pub trait BitSetTrait:
     core::fmt::Debug
@@ -61,6 +61,7 @@ pub trait BitSetTrait:
             self.remove(element)
         }
     }
+    #[must_use]
     fn with_bit_set(&self, element: SetElement, bit: bool) -> Self {
         let mut s = *self;
         s.set_bit(element, bit);
@@ -68,6 +69,8 @@ pub trait BitSetTrait:
     }
 
     fn insert(&mut self, element: SetElement) -> bool;
+
+    #[must_use]
     fn with_inserted(&self, element: SetElement) -> Self {
         let mut s = *self;
         s.insert(element);
@@ -75,6 +78,8 @@ pub trait BitSetTrait:
     }
 
     fn remove(&mut self, element: SetElement) -> bool;
+
+    #[must_use]
     fn with_removed(&self, element: SetElement) -> Self {
         let mut s = *self;
         s.remove(element);
@@ -82,6 +87,8 @@ pub trait BitSetTrait:
     }
 
     fn swap_bits(&mut self, i: u32, j: u32);
+
+    #[must_use]
     fn with_bits_swapped(&self, i: u32, j: u32) -> Self {
         let mut s = *self;
         s.swap_bits(i, j);
@@ -95,6 +102,8 @@ pub trait BitSetTrait:
     fn overlaps(&self, rhs: &Self) -> bool;
 
     fn intersect_with(&mut self, rhs: &Self);
+
+    #[must_use]
     fn with_intersect(&self, rhs: &Self) -> Self {
         let mut s = *self;
         s.intersect_with(rhs);
@@ -102,6 +111,7 @@ pub trait BitSetTrait:
     }
 
     fn union_with(&mut self, rhs: &Self);
+    #[must_use]
     fn with_union(&self, rhs: &Self) -> Self {
         let mut s = *self;
         s.union_with(rhs);
@@ -109,6 +119,8 @@ pub trait BitSetTrait:
     }
 
     fn except_with(&mut self, rhs: &Self);
+
+    #[must_use]
     fn with_except(&self, rhs: &Self) -> Self {
         let mut s = *self;
         s.except_with(rhs);
@@ -116,6 +128,8 @@ pub trait BitSetTrait:
     }
 
     fn symmetric_difference_with(&mut self, rhs: &Self);
+
+    #[must_use]
     fn with_symmetric_difference(&self, rhs: &Self) -> Self {
         let mut s = *self;
         s.symmetric_difference_with(rhs);
@@ -123,6 +137,8 @@ pub trait BitSetTrait:
     }
 
     fn negate(&mut self);
+
+    #[must_use]
     fn with_negated(&self) -> Self {
         let mut s = *self;
         s.negate();
@@ -160,88 +176,98 @@ pub trait BitSetTrait:
     }
 }
 
-impl BitSetTrait for BitSet16 {
-    type Inner = u16;
+macro_rules! impl_bit_set_trait {
+    ($name:ident, $inner: ty) => {
+        impl BitSetTrait for $name {
+            type Inner = $inner;
 
-    const EMPTY: Self = Self::EMPTY;
+            const EMPTY: Self = Self::EMPTY;
 
-    const ALL: Self = Self::ALL;
+            const ALL: Self = Self::ALL;
 
-    const MAX_COUNT: u32 = Self::MAX_COUNT;
+            const MAX_COUNT: u32 = Self::MAX_COUNT;
 
-    fn len(&self) -> u32 {
-        self.len_const()
-    }
+            fn len(&self) -> u32 {
+                self.len_const()
+            }
 
-    fn inner(self) -> Self::Inner {
-        self.inner_const()
-    }
+            fn inner(self) -> Self::Inner {
+                self.inner_const()
+            }
 
-    fn from_inner(inner: Self::Inner) -> Self {
-        Self::from_inner_const(inner)
-    }
+            fn from_inner(inner: Self::Inner) -> Self {
+                Self::from_inner_const(inner)
+            }
 
-    fn from_first_n(n: u32) -> Self {
-        Self::from_first_n_const(n)
-    }
+            fn from_first_n(n: u32) -> Self {
+                Self::from_first_n_const(n)
+            }
 
-    fn contains(&self, element: SetElement) -> bool {
-        self.contains_const(element)
-    }
+            fn contains(&self, element: SetElement) -> bool {
+                self.contains_const(element)
+            }
 
-    fn first(&self) -> Option<SetElement> {
-        self.first_const()
-    }
+            fn first(&self) -> Option<SetElement> {
+                self.first_const()
+            }
 
-    fn last(&self) -> Option<SetElement> {
-        self.last_const()
-    }
+            fn last(&self) -> Option<SetElement> {
+                self.last_const()
+            }
 
-    fn pop(&mut self) -> Option<SetElement> {
-        self.pop_const()
-    }
+            fn pop(&mut self) -> Option<SetElement> {
+                self.pop_const()
+            }
 
-    fn pop_last(&mut self) -> Option<SetElement> {
-        self.pop_last_const()
-    }
+            fn pop_last(&mut self) -> Option<SetElement> {
+                self.pop_last_const()
+            }
 
-    fn insert(&mut self, element: SetElement) -> bool {
-        self.insert_const(element)
-    }
+            fn insert(&mut self, element: SetElement) -> bool {
+                self.insert_const(element)
+            }
 
-    fn remove(&mut self, element: SetElement) -> bool {
-        self.remove_const(element)
-    }
+            fn remove(&mut self, element: SetElement) -> bool {
+                self.remove_const(element)
+            }
 
-    fn swap_bits(&mut self, i: u32, j: u32) {
-        self.swap_bits_const(i, j);
-    }
+            fn swap_bits(&mut self, i: u32, j: u32) {
+                self.swap_bits_const(i, j);
+            }
 
-    fn is_subset(&self, rhs: &Self) -> bool {
-        self.is_subset_const(rhs)
-    }
+            fn is_subset(&self, rhs: &Self) -> bool {
+                self.is_subset_const(rhs)
+            }
 
-    fn overlaps(&self, rhs: &Self) -> bool {
-        self.overlaps_const(rhs)
-    }
+            fn overlaps(&self, rhs: &Self) -> bool {
+                self.overlaps_const(rhs)
+            }
 
-    fn intersect_with(&mut self, rhs: &Self) {
-        self.intersect_with_const(rhs);
-    }
+            fn intersect_with(&mut self, rhs: &Self) {
+                self.intersect_with_const(rhs);
+            }
 
-    fn union_with(&mut self, rhs: &Self) {
-        self.union_with_const(rhs)
-    }
+            fn union_with(&mut self, rhs: &Self) {
+                self.union_with_const(rhs)
+            }
 
-    fn except_with(&mut self, rhs: &Self) {
-        self.except_with_const(rhs)
-    }
+            fn except_with(&mut self, rhs: &Self) {
+                self.except_with_const(rhs)
+            }
 
-    fn symmetric_difference_with(&mut self, rhs: &Self){
-        self.symmetric_difference_with_const(rhs);
-    }
+            fn symmetric_difference_with(&mut self, rhs: &Self) {
+                self.symmetric_difference_with_const(rhs);
+            }
 
-    fn negate(&mut self) {
-        self.negate_const();
-    }
+            fn negate(&mut self) {
+                self.negate_const();
+            }
+        }
+    };
 }
+
+impl_bit_set_trait!(BitSet8, u8);
+impl_bit_set_trait!(BitSet16, u16);
+impl_bit_set_trait!(BitSet32, u32);
+impl_bit_set_trait!(BitSet64, u64);
+impl_bit_set_trait!(BitSet128, u128);

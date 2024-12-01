@@ -1,9 +1,9 @@
-use crate::SetElement;
+use crate::{bit_set_iterator::BitSetIterator, SetElement};
 #[cfg(any(test, feature = "serde"))]
 use serde::{Deserialize, Serialize};
 
 macro_rules! define_bit_set_n {
-    ($name:ident, $inner: ty, $iter_name:ident) => {
+    ($name:ident, $inner: ty) => {
         #[must_use]
         #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
         #[cfg_attr(any(test, feature = "serde"), derive(Serialize, Deserialize))]
@@ -203,242 +203,21 @@ macro_rules! define_bit_set_n {
         impl IntoIterator for $name {
             type Item = SetElement;
 
-            type IntoIter = $iter_name;
+            type IntoIter = BitSetIterator<Self>;
 
             fn into_iter(self) -> Self::IntoIter {
-                $iter_name(self)
+                BitSetIterator(self)
             }
         }
 
-        #[derive(Debug, Clone, PartialEq)]
-        pub struct $iter_name($name);
-
-        impl ExactSizeIterator for $iter_name {}
-
-        impl core::iter::FusedIterator for $iter_name {}
-
-        impl Iterator for $iter_name {
-            type Item = SetElement;
-
-            #[inline]
-            fn next(&mut self) -> Option<Self::Item> {
-                self.0.pop_const()
-            }
-
-            #[inline]
-            fn size_hint(&self) -> (usize, Option<usize>) {
-                let c = self.0.len_const() as usize;
-                (c, Some(c))
-            }
-
-            #[inline]
-            fn count(self) -> usize
-            where
-                Self: Sized,
-            {
-                self.len()
-            }
-
-            #[inline]
-            fn last(self) -> Option<Self::Item>
-            where
-                Self: Sized,
-            {
-                self.0.last_const()
-            }
-
-            #[inline]
-            fn max(self) -> Option<Self::Item>
-            where
-                Self: Sized,
-                Self::Item: Ord,
-            {
-                self.last()
-            }
-
-            #[inline]
-            fn min(mut self) -> Option<Self::Item>
-            where
-                Self: Sized,
-                Self::Item: Ord,
-            {
-                self.next()
-            }
-
-            #[inline]
-            fn nth(&mut self, n: usize) -> Option<Self::Item> {
-                if (self.0.len_const() as usize) <= n {
-                    self.0 .0 = 0;
-                    return None;
-                }
-                #[allow(clippy::cast_possible_truncation)]
-                let mut n = n as SetElement;
-                let mut shift = 0;
-                loop {
-                    let tz = self.0 .0.trailing_zeros();
-                    self.0 .0 >>= tz;
-                    shift += tz;
-                    let to = self.0 .0.trailing_ones();
-                    if let Some(new_n) = n.checked_sub(to) {
-                        n = new_n;
-                        self.0 .0 >>= to;
-                        shift += to;
-                    } else {
-                        self.0 .0 >>= n + 1;
-                        let r = shift + n;
-                        self.0 .0 = self.0 .0.wrapping_shl(shift + n + 1);
-
-                        return Some(r);
-                    }
-                }
-            }
-
-            #[inline]
-            fn fold<B, F>(self, init: B, mut f: F) -> B
-            where
-                Self: Sized,
-                F: FnMut(B, Self::Item) -> B,
-            {
-                let mut accum = init;
-
-                let mut word = self.0 .0;
-                let mut offset = 0;
-
-                if word == <$inner>::MAX {
-                    //special case - prevents overflow when right shifting
-                    for v in 0..($name::MAX_COUNT) {
-                        accum = f(accum, v);
-                    }
-                } else {
-                    while word != 0 {
-                        let tz = word.trailing_zeros();
-                        word >>= tz;
-                        offset += tz;
-                        let trailing_ones = word.trailing_ones();
-                        for _ in 0..trailing_ones {
-                            accum = f(accum, offset);
-                            offset += 1;
-                        }
-                        word >>= trailing_ones;
-                    }
-                }
-
-                accum
-            }
-
-            #[inline]
-            fn sum<S>(self) -> S
-            where
-                Self: Sized,
-                S: core::iter::Sum<Self::Item>,
-            {
-                let mut total = 0u32;
-                let word = self.0 .0;
-                let mut value = word;
-                let mut multiplier = 0;
-
-                if self.0 == $name::ALL {
-                    const MAX_COUNT: SetElement = ($name::MAX_COUNT * ($name::MAX_COUNT - 1)) / 2;
-                    total += MAX_COUNT;
-                } else {
-                    while value != 0 {
-                        let zeros = value.trailing_zeros();
-                        value >>= zeros;
-                        multiplier += zeros;
-                        let ones = value.trailing_ones(); //there must be some or we wouldn't have shifted right
-                        value >>= ones; //cannot overflow as we checked for full set
-
-                        total += (ones * (ones + multiplier + multiplier - 1)) / 2;
-
-                        multiplier += ones;
-                    }
-                }
-
-                S::sum(core::iter::once(total))
-            }
-            fn is_sorted(self) -> bool
-            where
-                Self: Sized,
-                Self::Item: PartialOrd,
-            {
-                true
-            }
-        }
-
-        impl DoubleEndedIterator for $iter_name {
-            #[inline]
-            fn next_back(&mut self) -> Option<Self::Item> {
-                self.0.pop_last_const()
-            }
-
-            fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-                if (self.0.len_const() as usize) <= n {
-                    self.0 .0 = 0;
-                    return None;
-                }
-
-                #[allow(clippy::cast_possible_truncation)]
-                let mut n = n as SetElement;
-
-                let mut shift = 0;
-
-                loop {
-                    let lz = self.0 .0.leading_zeros();
-                    self.0 .0 <<= lz;
-                    shift += lz;
-                    let leading_ones = self.0 .0.leading_ones();
-                    if let Some(new_n) = n.checked_sub(leading_ones) {
-                        n = new_n;
-                        self.0 .0 <<= leading_ones;
-                        shift += leading_ones;
-                    } else {
-                        self.0 .0 <<= n + 1;
-                        let r = $name::MAX_COUNT - (shift + n + 1);
-
-                        self.0 .0 = self.0 .0.wrapping_shr(shift + n + 1);
-
-                        return Some(r);
-                    }
-                }
-            }
-
-            fn rfold<B, F>(mut self, init: B, mut f: F) -> B
-            where
-                Self: Sized,
-                F: FnMut(B, Self::Item) -> B,
-            {
-                let mut accum = init;
-                let mut offset = $name::MAX_COUNT;
-
-                //special case - prevents overflow when right shifting
-
-                if self.0 .0 == <$inner>::MAX {
-                    //special case - prevents overflow when right shifting
-                    for v in (0..($name::MAX_COUNT)).rev() {
-                        accum = f(accum, v);
-                    }
-                } else {
-                    while self.0 .0 != 0 {
-                        let lz = self.0 .0.leading_zeros();
-                        self.0 .0 <<= lz;
-                        offset -= lz;
-                        let leading_ones = self.0 .0.leading_ones();
-                        for _ in 0..leading_ones {
-                            offset -= 1;
-                            accum = f(accum, offset);
-                        }
-                        self.0 .0 <<= leading_ones;
-                    }
-                }
-
-                accum
-            }
-        }
     };
 }
 
-define_bit_set_n!(BitSet8, u8, BitSet8Iter);
-define_bit_set_n!(BitSet16, u16, BitSet16Iter);
+define_bit_set_n!(BitSet8, u8);
+define_bit_set_n!(BitSet16, u16);
+define_bit_set_n!(BitSet32, u32);
+define_bit_set_n!(BitSet64, u64);
+define_bit_set_n!(BitSet128, u128);
 
 #[cfg(test)]
 mod tests {
@@ -543,7 +322,7 @@ mod tests {
             Vec::from_iter((0..(BitSet16::MAX_COUNT)).filter(|x| x % 7 == 0 || x % 4 == 0));
 
         let sum: SetElement = set.into_iter().sum();
-        let expected_sum = expected_set.into_iter().sum();
+        let expected_sum: SetElement = expected_set.into_iter().sum();
 
         assert_eq!(sum, expected_sum);
 
