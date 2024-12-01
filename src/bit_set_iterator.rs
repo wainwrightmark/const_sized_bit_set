@@ -1,7 +1,7 @@
 use crate::{bit_set_shiftable::BitSetShiftable, SetElement};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct BitSetIterator<T: BitSetShiftable>(pub (crate) T);
+pub struct BitSetIterator<T: BitSetShiftable>(pub(crate) T);
 
 impl<T: BitSetShiftable> Iterator for BitSetIterator<T> {
     type Item = SetElement;

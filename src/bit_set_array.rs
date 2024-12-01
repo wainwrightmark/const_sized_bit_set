@@ -98,7 +98,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     ///
     /// PANICS if index is out of range
     #[inline]
-    pub const  fn set_bit(&mut self, index: usize, bit: bool) {
+    pub const fn set_bit(&mut self, index: usize, bit: bool) {
         if bit {
             self.insert(index);
         } else {
@@ -952,7 +952,9 @@ pub mod tests {
         assert_tokens(
             &map,
             &[
-                Token::NewtypeStruct { name: "BitSetArray" },
+                Token::NewtypeStruct {
+                    name: "BitSetArray",
+                },
                 Token::Tuple { len: 4 },
                 Token::U64(0),
                 Token::U64(0),
@@ -971,7 +973,9 @@ pub mod tests {
         assert_tokens(
             &map,
             &[
-                Token::NewtypeStruct { name: "BitSetArray" },
+                Token::NewtypeStruct {
+                    name: "BitSetArray",
+                },
                 Token::Tuple { len: 4 },
                 Token::U64(6_148_914_691_236_517_205),
                 Token::U64(12_297_829_382_473_034_410),
@@ -1166,7 +1170,10 @@ pub mod tests {
 
         assert_eq!(sum, expected_sum);
 
-        assert_eq!(BitSetArray::<4>::ALL.into_iter().sum::<usize>(), (0..256).sum());
+        assert_eq!(
+            BitSetArray::<4>::ALL.into_iter().sum::<usize>(),
+            (0..256).sum()
+        );
     }
 
     #[test]
@@ -1372,7 +1379,9 @@ pub mod tests {
         assert_tokens(
             &map,
             &[
-                Token::NewtypeStruct { name: "BitSetArray" },
+                Token::NewtypeStruct {
+                    name: "BitSetArray",
+                },
                 Token::Tuple { len: 1 },
                 Token::U64(0),
                 Token::TupleEnd,
@@ -1388,7 +1397,9 @@ pub mod tests {
         assert_tokens(
             &map,
             &[
-                Token::NewtypeStruct { name: "BitSetArray" },
+                Token::NewtypeStruct {
+                    name: "BitSetArray",
+                },
                 Token::Tuple { len: 1 },
                 Token::U64(6_148_914_691_236_517_205),
                 Token::TupleEnd,

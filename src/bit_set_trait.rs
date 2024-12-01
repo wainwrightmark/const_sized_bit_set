@@ -172,7 +172,7 @@ pub trait BitSetTrait:
             }
         }
 
-        return result_set;
+        result_set
     }
 }
 

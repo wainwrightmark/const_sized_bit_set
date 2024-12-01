@@ -37,12 +37,14 @@ macro_rules! define_bit_set_n {
             }
 
             /// Whether this set contains the element
+            #[must_use]
             pub const fn contains_const(&self, element: SetElement) -> bool {
                 (self.0 >> element) & 1 == 1
             }
 
             /// Whether two sets are equal
             #[inline]
+            #[must_use]
             pub const fn eq_const(&self, rhs: &Self) -> bool {
                 self.0 == rhs.0
             }
@@ -122,6 +124,7 @@ macro_rules! define_bit_set_n {
                 rhs.is_subset_const(self)
             }
 
+            #[must_use]
             pub const fn overlaps_const(&self, rhs: &Self) -> bool {
                 let mut s = *self;
                 s.intersect_with_const(rhs);
@@ -209,7 +212,6 @@ macro_rules! define_bit_set_n {
                 BitSetIterator(self)
             }
         }
-
     };
 }
 

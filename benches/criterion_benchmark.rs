@@ -129,7 +129,11 @@ pub fn nth_benchmark(c: &mut Criterion) {
     });
 
     c.bench_function("nth_all", |b| {
-        b.iter(|| black_box(BitSetArray::<4>::ALL).into_iter().nth(black_box(100)));
+        b.iter(|| {
+            black_box(BitSetArray::<4>::ALL)
+                .into_iter()
+                .nth(black_box(100))
+        });
     });
 
     c.bench_function("nth_back_half", |b| {
