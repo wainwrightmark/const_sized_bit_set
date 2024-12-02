@@ -39,6 +39,10 @@ macro_rules! define_bit_set_n {
             /// Whether this set contains the element
             #[must_use]
             pub const fn contains_const(&self, element: SetElement) -> bool {
+                debug_assert!(
+                    element < Self::MAX_COUNT,
+                    "Element is too big to be contained in bitset"
+                );
                 (self.0 >> element) & 1 == 1
             }
 
@@ -60,6 +64,11 @@ macro_rules! define_bit_set_n {
             /// Returns whether the element was inserted (it was not already present)
             #[inline]
             pub const fn insert_const(&mut self, element: SetElement) -> bool {
+                debug_assert!(
+                    element < Self::MAX_COUNT,
+                    "Element is too big to insert into bitset"
+                );
+
                 let mask = 1 << element;
                 let r = self.0 & mask == 0;
 
@@ -70,6 +79,10 @@ macro_rules! define_bit_set_n {
             /// Remove an element from the set
             #[inline]
             pub const fn remove_const(&mut self, element: SetElement) -> bool {
+                debug_assert!(
+                    element < Self::MAX_COUNT,
+                    "Element is too big to remove from bitset"
+                );
                 let mask = 1 << element;
                 let r = self.0 & mask != 0;
                 self.0 &= !mask;
@@ -80,13 +93,31 @@ macro_rules! define_bit_set_n {
             #[must_use]
             #[inline]
             pub const fn from_first_n_const(n: SetElement) -> Self {
-                let inner = !(<$inner>::MAX << n);
-                Self(inner)
+                debug_assert!(
+                    n <= Self::MAX_COUNT,
+                    "Too many elements to create bitset from first n"
+                );
+
+                if n == Self::MAX_COUNT {
+                    Self::ALL
+                } else {
+                    let inner = !(<$inner>::MAX << n);
+                    Self(inner)
+                }
             }
 
             /// Swap the bits at i and j
             #[inline]
             pub const fn swap_bits_const(&mut self, i: SetElement, j: SetElement) {
+                debug_assert!(
+                    i <= Self::MAX_COUNT,
+                    "Element i is too big to swap in bitset"
+                );
+                debug_assert!(
+                    j <= Self::MAX_COUNT,
+                    "Element J is too big to swap in bitset"
+                );
+
                 let x = (self.0 >> i ^ self.0 >> j) & 1;
                 self.0 ^= x << i | x << j;
             }

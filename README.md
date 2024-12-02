@@ -11,7 +11,7 @@ Can be used in no-std as it does not allocate.
 use const_sized_bit_set::*;
 
 // This set has 2 64-bit words so this set can contain values in 0..=127
-let mut set = BitSet::<2>::from_iter([0,1, 99].into_iter());
+let mut set = BitSetArray::<2>::from_iter([0,1, 99].into_iter());
 
 set.remove(1);
 set.insert(100);

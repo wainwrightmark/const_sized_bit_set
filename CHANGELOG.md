@@ -16,14 +16,15 @@ Possible header types:
 ### Breaking Changes
 
 - `BitSet` is renamed `BitSetArray`
-- Set elements are `u32`, not `usize`
 - Added `BitSet` trait
 - Minimum supported rust version is now 1.83
 
 ### Features
 
 - Added `BitSet` trait
+- Added `BitSetShiftable` trait
 - Added `BitSet8`, `BitSet16`, `BitSet32`, `BitSet64`, `BitSet128`
+- Added `SetSizeNIter`
 
 ## v0.1.0 (2023-03-19)
 
