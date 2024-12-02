@@ -254,112 +254,31 @@ define_bit_set_n!(BitSet128, u128);
 
 #[cfg(test)]
 mod tests {
-    use crate::{bit_set_n::BitSet16, bit_set_trait::BitSetTrait, SetElement};
+    use crate::{bit_set_n::BitSet16, bit_set_trait::BitSetTrait};
 
     #[test]
-    fn test_iter_last() {
-        let set = BitSet16::from_fn(|x| x % 7 == 0);
-        let iter = set.into_iter();
-        assert_eq!(iter.last(), Some(14));
-    }
+    fn test_serde_empty() {
+        use serde_test::*;
+        let set = BitSet16::EMPTY;
 
-    #[test]
-    fn test_iter_max() {
-        let set = BitSet16::from_fn(|x| x % 3 == 0 && x < 15);
-        let iter = set.into_iter();
-        let max = Iterator::max(iter);
-        assert_eq!(max, Some(12));
-    }
-
-    #[test]
-    fn test_iter_min() {
-        let set = BitSet16::from_fn(|x| x > 6 && x % 3 == 0);
-        let iter = set.into_iter();
-        let min = Iterator::min(iter);
-        assert_eq!(min, Some(9));
-    }
-
-    #[test]
-    fn test_iter_nth() {
-        let set = BitSet16::from_fn(|x| x % 3 == 0);
-        let expected_set = Vec::from_iter((0..(BitSet16::MAX_COUNT)).filter(|x| x % 3 == 0));
-
-        let mut iter = set.into_iter();
-        let mut expected_iter = expected_set.into_iter();
-
-        for n in [0, 1, 2, 0] {
-            let expected = expected_iter.nth(n);
-            let actual = iter.nth(n);
-            assert_eq!(expected, actual);
-        }
-    }
-
-    #[test]
-    fn test_iter_nth_back() {
-        let set = BitSet16::from_fn(|x| x % 3 == 0);
-        let expected_set = Vec::from_iter((0..(BitSet16::MAX_COUNT)).filter(|x| x % 3 == 0));
-
-        let mut iter = set.into_iter();
-        let mut expected_iter = expected_set.into_iter();
-
-        for n in [0, 1, 10, 2] {
-            let expected = expected_iter.nth_back(n);
-            let actual = iter.nth_back(n);
-
-            assert_eq!(expected, actual);
-        }
-    }
-
-    #[test]
-    fn test_iter_fold() {
-        let set = BitSet16::from_fn(|x| x % 7 == 0);
-        let iter = set.into_iter();
-        let fold_result = iter.fold(13, |acc, x| acc + x);
-
-        assert_eq!(fold_result, 34);
-
-        let complete_set = BitSet16::ALL;
-
-        assert_eq!(
-            complete_set.into_iter().fold(Vec::new(), |mut vec, v| {
-                vec.push(v);
-                vec
-            }),
-            Vec::from_iter(0..(BitSet16::MAX_COUNT))
+        assert_tokens(
+            &set,
+            &[Token::NewtypeStruct { name: "BitSet16" }, Token::U16(0)],
         );
     }
 
     #[test]
-    fn test_iter_rfold() {
-        let set = BitSet16::from_fn(|x| x % 7 == 0);
-        let iter = set.into_iter();
-        let fold_result = iter.rfold(13, |acc, x| acc + x);
+    fn test_serde() {
+        use serde_test::*;
+        let set = BitSet16::from_fn(|x| x % 2 == 1);
 
-        assert_eq!(fold_result, 34);
-
-        let complete_set = BitSet16::ALL;
-
-        assert_eq!(
-            complete_set.into_iter().rfold(Vec::new(), |mut vec, v| {
-                vec.push(v);
-                vec
-            }),
-            Vec::from_iter((0..(BitSet16::MAX_COUNT)).rev())
+        assert_tokens(
+            &set,
+            &[
+                Token::NewtypeStruct { name: "BitSet16" },
+                Token::U16(0b1010101010101010),
+            ],
         );
-    }
-
-    #[test]
-    fn test_sum() {
-        let set = BitSet16::from_fn(|x| x % 7 == 0 || x % 4 == 0);
-        let expected_set =
-            Vec::from_iter((0..(BitSet16::MAX_COUNT)).filter(|x| x % 7 == 0 || x % 4 == 0));
-
-        let sum: SetElement = set.into_iter().sum();
-        let expected_sum: SetElement = expected_set.into_iter().sum();
-
-        assert_eq!(sum, expected_sum);
-
-        assert_eq!(BitSet16::ALL.into_iter().sum::<SetElement>(), (0..16).sum());
     }
 
     #[test]
@@ -424,7 +343,11 @@ mod tests {
 
         assert!(BitSet16::from_inner(0b0101).is_subset(&BitSet16::from_inner(0b1101)));
 
-        assert!(BitSet16::from_inner(0b1101).is_superset(&BitSet16::from_inner(0b0101)));
+        assert!(BitSet16::from_inner(0b1101).is_superset_const(&BitSet16::from_inner(0b0101)));
+
+        assert!(BitSet16::from_inner(0b1101).overlaps_const(&BitSet16::from_inner(0b0101)));
+
+        assert!(!BitSet16::from_inner(0b1010).overlaps_const(&BitSet16::from_inner(0b0101)));
 
         assert!(BitSet16::from_inner(0b100).contains(2));
         assert!(!BitSet16::from_inner(0b100).contains(1));

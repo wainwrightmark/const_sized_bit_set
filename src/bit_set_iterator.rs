@@ -202,3 +202,152 @@ impl<T: BitSetShiftable> DoubleEndedIterator for BitSetIterator<T> {
         accum
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use crate::{bit_set_trait::BitSetTrait, BitSet16, SetElement};
+
+    #[test]
+    fn test_is_sorted()
+    {
+        let set = BitSet16::ALL;
+        assert!(set.into_iter().is_sorted())
+    }
+
+    #[test]
+    fn test_count(){
+        let set = BitSet16::ALL;
+
+        let mut iter = set.into_iter();
+
+        let mut expected_count = 16;
+        while expected_count > 0 {
+            assert_eq!(expected_count, iter.clone().count());
+            let _ = iter.next();
+            expected_count -= 1;
+            assert_eq!(expected_count, iter.clone().count());
+
+            let _ = iter.next_back();
+            expected_count -= 1;
+            assert_eq!(expected_count, iter.clone().count());
+        }
+    }
+
+    #[test]
+    fn test_iter_last() {
+        let set = BitSet16::from_fn(|x| x % 7 == 0);
+        let iter = set.into_iter();
+        assert_eq!(iter.last(), Some(14));
+    }
+
+    #[test]
+    fn test_iter_max() {
+        let set = BitSet16::from_fn(|x| x % 3 == 0 && x < 15);
+        let iter = set.into_iter();
+        let max = Iterator::max(iter);
+        assert_eq!(max, Some(12));
+    }
+
+    #[test]
+    fn test_iter_min() {
+        let set = BitSet16::from_fn(|x| x > 6 && x % 3 == 0);
+        let iter = set.into_iter();
+        let min = Iterator::min(iter);
+        assert_eq!(min, Some(9));
+    }
+
+
+    #[test]
+    fn test_iter_nth() {
+        let set = BitSet16::from_fn(|x| x % 3 == 0);
+        let expected_set = Vec::from_iter((0..(BitSet16::MAX_COUNT)).filter(|x| x % 3 == 0));
+
+        let mut iter = set.into_iter();
+        let mut expected_iter = expected_set.into_iter();
+
+        for n in [0, 1, 2, 0] {
+            let expected = expected_iter.nth(n);
+            let actual = iter.nth(n);
+            assert_eq!(expected, actual);
+        }
+    }
+
+    #[test]
+    fn test_iter_reverse(){
+        let set = BitSet16::from_fn(|x| x % 3 == 0);
+        let expected_set = Vec::from_iter((0..(BitSet16::MAX_COUNT)).filter(|x| x % 3 == 0));
+
+        let actual : Vec<u32>= set.into_iter().rev().collect();
+        let expected : Vec<u32>= expected_set.into_iter().rev().collect();
+
+        assert_eq!(actual, expected)
+    }
+
+    #[test]
+    fn test_iter_nth_back() {
+        let set = BitSet16::from_fn(|x| x % 3 == 0);
+        let expected_set = Vec::from_iter((0..(BitSet16::MAX_COUNT)).filter(|x| x % 3 == 0));
+
+        let mut iter = set.into_iter();
+        let mut expected_iter = expected_set.into_iter();
+
+        for n in [0, 1, 10, 2] {
+            let expected = expected_iter.nth_back(n);
+            let actual = iter.nth_back(n);
+
+            assert_eq!(expected, actual);
+        }
+    }
+
+    #[test]
+    fn test_iter_fold() {
+        let set = BitSet16::from_fn(|x| x % 7 == 0);
+        let iter = set.into_iter();
+        let fold_result = iter.fold(13, |acc, x| acc + x);
+
+        assert_eq!(fold_result, 34);
+
+        let complete_set = BitSet16::ALL;
+
+        assert_eq!(
+            complete_set.into_iter().fold(Vec::new(), |mut vec, v| {
+                vec.push(v);
+                vec
+            }),
+            Vec::from_iter(0..(BitSet16::MAX_COUNT))
+        );
+    }
+
+    #[test]
+    fn test_iter_rfold() {
+        let set = BitSet16::from_fn(|x| x % 7 == 0);
+        let iter = set.into_iter();
+        let fold_result = iter.rfold(13, |acc, x| acc + x);
+
+        assert_eq!(fold_result, 34);
+
+        let complete_set = BitSet16::ALL;
+
+        assert_eq!(
+            complete_set.into_iter().rfold(Vec::new(), |mut vec, v| {
+                vec.push(v);
+                vec
+            }),
+            Vec::from_iter((0..(BitSet16::MAX_COUNT)).rev())
+        );
+    }
+
+    #[test]
+    fn test_sum() {
+        let set = BitSet16::from_fn(|x| x % 7 == 0 || x % 4 == 0);
+        let expected_set =
+            Vec::from_iter((0..(BitSet16::MAX_COUNT)).filter(|x| x % 7 == 0 || x % 4 == 0));
+
+        let sum: SetElement = set.into_iter().sum();
+        let expected_sum: SetElement = expected_set.into_iter().sum();
+
+        assert_eq!(sum, expected_sum);
+
+        assert_eq!(BitSet16::ALL.into_iter().sum::<SetElement>(), (0..16).sum());
+    }
+}
