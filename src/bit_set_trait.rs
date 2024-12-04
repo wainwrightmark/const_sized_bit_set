@@ -1,5 +1,7 @@
 use crate::{BitSet128, BitSet16, BitSet32, BitSet64, BitSet8, SetElement};
 
+//todo add tiles_before and nth
+
 pub trait BitSetTrait:
     core::fmt::Debug
     + Clone

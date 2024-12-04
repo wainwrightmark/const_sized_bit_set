@@ -1,3 +1,5 @@
+use core::fmt::{self, Binary, LowerHex, UpperHex};
+
 use crate::{bit_set_iterator::BitSetIterator, SetElement};
 #[cfg(any(test, feature = "serde"))]
 use serde::{Deserialize, Serialize};
@@ -5,7 +7,7 @@ use serde::{Deserialize, Serialize};
 macro_rules! define_bit_set_n {
     ($name:ident, $inner: ty) => {
         #[must_use]
-        #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
+        #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
         #[cfg_attr(any(test, feature = "serde"), derive(Serialize, Deserialize))]
         pub struct $name($inner);
 
@@ -252,9 +254,64 @@ define_bit_set_n!(BitSet32, u32);
 define_bit_set_n!(BitSet64, u64);
 define_bit_set_n!(BitSet128, u128);
 
+macro_rules! impl_binary_debug {
+    ($set: ty, $name: expr) => {
+        impl core::fmt::Debug for $set {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "{}(0b{:b})", $name, self.0)
+            }
+        }
+    };
+}
+
+macro_rules! impl_hex_debug {
+    ($set: ty, $name: expr) => {
+        impl fmt::Debug for $set {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                write!(f, "{}(0x{:x})", $name, self.0)
+            }
+        }
+    };
+}
+
+macro_rules! impl_binary_and_hex {
+    ($set: ty) => {
+        impl core::fmt::Binary for $set {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                Binary::fmt(&self.0, f)
+            }
+        }
+
+        impl core::fmt::LowerHex for $set {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                LowerHex::fmt(&self.0, f)
+            }
+        }
+
+        impl core::fmt::UpperHex for $set {
+            fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+                UpperHex::fmt(&self.0, f)
+            }
+        }
+    };
+}
+
+
+impl_binary_debug!(BitSet8, "BitSet8");
+impl_binary_debug!(BitSet16, "BitSet16");
+impl_hex_debug!(BitSet32, "BitSet32");
+impl_hex_debug!(BitSet64, "BitSet64");
+impl_hex_debug!(BitSet128, "BitSet128");
+
+impl_binary_and_hex!(BitSet8);
+impl_binary_and_hex!(BitSet16);
+impl_binary_and_hex!(BitSet32);
+impl_binary_and_hex!(BitSet64);
+impl_binary_and_hex!(BitSet128);
+
 #[cfg(test)]
 mod tests {
-    use crate::{bit_set_n::BitSet16, bit_set_trait::BitSetTrait};
+    use crate::{bit_set_n::BitSet16, bit_set_trait::BitSetTrait, BitSet128, BitSet32, BitSet64, BitSet8};
 
     #[test]
     fn test_serde_empty() {
@@ -372,5 +429,23 @@ mod tests {
             BitSet16::from_first_n(8).min_set_by_key(|x| x % 2),
             BitSet16::from_inner(0b01010101)
         );
+    }
+
+    #[test]
+    fn test_formatting(){
+        let bitset8_formatted = format!("{s:?} {s:b} {s:x} {s:X} {s:#b} {s:#x} {s:#X}", s= BitSet8::ALL);
+        assert_eq!(bitset8_formatted, "BitSet8(0b11111111) 11111111 ff FF 0b11111111 0xff 0xFF");
+
+        let bitset16_formatted = format!("{s:?} {s:b} {s:x} {s:X} {s:#b} {s:#x} {s:#X}", s= BitSet16::ALL);
+        assert_eq!(bitset16_formatted, "BitSet16(0b1111111111111111) 1111111111111111 ffff FFFF 0b1111111111111111 0xffff 0xFFFF");
+
+        let bitset32_formatted = format!("{s:?} {s:b} {s:x} {s:X} {s:#b} {s:#x} {s:#X}", s= BitSet32::ALL);
+        assert_eq!(bitset32_formatted, "BitSet32(0xffffffff) 11111111111111111111111111111111 ffffffff FFFFFFFF 0b11111111111111111111111111111111 0xffffffff 0xFFFFFFFF");
+
+        let bitset64_formatted = format!("{s:?} {s:b} {s:x} {s:X} {s:#b} {s:#x} {s:#X}", s= BitSet64::ALL);
+        assert_eq!(bitset64_formatted, "BitSet64(0xffffffffffffffff) 1111111111111111111111111111111111111111111111111111111111111111 ffffffffffffffff FFFFFFFFFFFFFFFF 0b1111111111111111111111111111111111111111111111111111111111111111 0xffffffffffffffff 0xFFFFFFFFFFFFFFFF");
+
+        let bitset128_formatted = format!("{s:?} {s:b} {s:x} {s:X} {s:#b} {s:#x} {s:#X}", s= BitSet128::ALL);
+        assert_eq!(bitset128_formatted, "BitSet128(0xffffffffffffffffffffffffffffffff) 11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111 ffffffffffffffffffffffffffffffff FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF 0b11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111 0xffffffffffffffffffffffffffffffff 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
     }
 }

@@ -11,6 +11,13 @@ Possible header types:
 
 [crates.io]: https://crates.io/crates/const_sized_bit_set
 
+## v0.2.1 (2024-04-12)
+
+### Features
+
+- Added `iter_subsets()` for `BitSet8` and friends
+- impl `Binary` `UpperHex` and `LowerHex` for `BitSet8` and friends
+
 ## v0.2.0
 
 ### Breaking Changes

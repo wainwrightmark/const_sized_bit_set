@@ -7,6 +7,7 @@ pub mod bit_set_iterator;
 pub mod bit_set_n;
 pub mod bit_set_shiftable;
 pub mod bit_set_trait;
+pub mod subset_iter;
 mod n_choose_k;
 pub mod set_size_n_iter;
 
