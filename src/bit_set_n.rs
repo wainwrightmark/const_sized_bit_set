@@ -218,6 +218,48 @@ macro_rules! define_bit_set_n {
                 self.0 &= !(1 << element);
                 return Some(element);
             }
+
+            /// Returns the number of elements less than `element` in the set
+            /// Returns the same result regardless of whether `element` is present
+            #[must_use]
+            #[inline]
+            pub const fn count_lesser_elements_const(&self, element: SetElement) -> u32 {
+                let shift = Self::MAX_COUNT - element;
+
+                match self.0.checked_shl(shift) {
+                    Some(x) => x.count_ones(),
+                    None => 0,
+                }
+            }
+
+            /// Returns the n+1th element present in the set, if there are at least n + 1 elements
+            /// To return the first element, use n == 0
+            #[must_use]
+            #[inline]
+            pub const fn nth_const(&self, n: u32) -> Option<SetElement> {
+                if n >= self.0.count_ones() {
+                    return None;
+                }
+
+                let desired_ones = self.0.count_ones() - n;
+
+                let mut shifted_away = 0u32;
+                let mut remaining = self.0;
+
+                let mut chunk_size = Self::MAX_COUNT / 2;
+
+                //todo test a branchless version of this
+                loop {
+                    let r = remaining >> chunk_size;
+                    if r.count_ones() == desired_ones {
+                        return Some(shifted_away + chunk_size + r.trailing_zeros());
+                    }
+                    let cmp = (r.count_ones() > desired_ones) as u32;
+                    shifted_away += cmp * chunk_size;
+                    remaining >>= chunk_size * cmp;
+                    chunk_size /= 2;
+                }
+            }
         }
 
         impl Extend<SetElement> for $name {
@@ -296,7 +338,6 @@ macro_rules! impl_binary_and_hex {
     };
 }
 
-
 impl_binary_debug!(BitSet8, "BitSet8");
 impl_binary_debug!(BitSet16, "BitSet16");
 impl_hex_debug!(BitSet32, "BitSet32");
@@ -311,7 +352,9 @@ impl_binary_and_hex!(BitSet128);
 
 #[cfg(test)]
 mod tests {
-    use crate::{bit_set_n::BitSet16, bit_set_trait::BitSetTrait, BitSet128, BitSet32, BitSet64, BitSet8};
+    use crate::{
+        bit_set_n::BitSet16, bit_set_trait::BitSetTrait, BitSet128, BitSet32, BitSet64, BitSet8,
+    };
 
     #[test]
     fn test_serde_empty() {
@@ -432,20 +475,86 @@ mod tests {
     }
 
     #[test]
-    fn test_formatting(){
-        let bitset8_formatted = format!("{s:?} {s:b} {s:x} {s:X} {s:#b} {s:#x} {s:#X}", s= BitSet8::ALL);
-        assert_eq!(bitset8_formatted, "BitSet8(0b11111111) 11111111 ff FF 0b11111111 0xff 0xFF");
+    fn test_nth_const() {
+        assert_eq!(BitSet8::EMPTY.nth_const(0), None);
+        assert_eq!(BitSet8::EMPTY.nth_const(1), None);
 
-        let bitset16_formatted = format!("{s:?} {s:b} {s:x} {s:X} {s:#b} {s:#x} {s:#X}", s= BitSet16::ALL);
+        assert_eq!(BitSet8::from_inner(0b01010101).nth_const(0), Some(0));
+        assert_eq!(BitSet8::from_inner(0b01010101).nth_const(1), Some(2));
+        assert_eq!(BitSet8::from_inner(0b01010101).nth_const(2), Some(4));
+        assert_eq!(BitSet8::from_inner(0b01010101).nth_const(3), Some(6));
+        assert_eq!(BitSet8::from_inner(0b01010101).nth_const(4), None);
+
+        assert_eq!(BitSet8::ALL.nth_const(0), Some(0));
+        assert_eq!(BitSet8::ALL.nth_const(1), Some(1));
+        assert_eq!(BitSet8::ALL.nth_const(7), Some(7));
+        assert_eq!(BitSet8::ALL.nth_const(8), None);
+    }
+    #[test]
+    fn test_count_lesser_elements() {
+        assert_eq!(BitSet8::EMPTY.count_lesser_elements_const(0), 0);
+        assert_eq!(BitSet8::EMPTY.count_lesser_elements_const(1), 0);
+
+        assert_eq!(
+            BitSet8::from_inner(0b01010101).count_lesser_elements_const(0),
+            0
+        );
+        assert_eq!(
+            BitSet8::from_inner(0b01010101).count_lesser_elements_const(1),
+            1
+        );
+        assert_eq!(
+            BitSet8::from_inner(0b01010101).count_lesser_elements_const(2),
+            1
+        );
+        assert_eq!(
+            BitSet8::from_inner(0b01010101).count_lesser_elements_const(3),
+            2
+        );
+        assert_eq!(
+            BitSet8::from_inner(0b01010101).count_lesser_elements_const(4),
+            2
+        );
+
+        assert_eq!(BitSet8::ALL.count_lesser_elements_const(0), 0);
+        assert_eq!(BitSet8::ALL.count_lesser_elements_const(1), 1);
+        assert_eq!(BitSet8::ALL.count_lesser_elements_const(7), 7);
+        assert_eq!(BitSet8::ALL.count_lesser_elements_const(8), 8);
+    }
+
+    #[test]
+    fn test_formatting() {
+        let bitset8_formatted = format!(
+            "{s:?} {s:b} {s:x} {s:X} {s:#b} {s:#x} {s:#X}",
+            s = BitSet8::ALL
+        );
+        assert_eq!(
+            bitset8_formatted,
+            "BitSet8(0b11111111) 11111111 ff FF 0b11111111 0xff 0xFF"
+        );
+
+        let bitset16_formatted = format!(
+            "{s:?} {s:b} {s:x} {s:X} {s:#b} {s:#x} {s:#X}",
+            s = BitSet16::ALL
+        );
         assert_eq!(bitset16_formatted, "BitSet16(0b1111111111111111) 1111111111111111 ffff FFFF 0b1111111111111111 0xffff 0xFFFF");
 
-        let bitset32_formatted = format!("{s:?} {s:b} {s:x} {s:X} {s:#b} {s:#x} {s:#X}", s= BitSet32::ALL);
+        let bitset32_formatted = format!(
+            "{s:?} {s:b} {s:x} {s:X} {s:#b} {s:#x} {s:#X}",
+            s = BitSet32::ALL
+        );
         assert_eq!(bitset32_formatted, "BitSet32(0xffffffff) 11111111111111111111111111111111 ffffffff FFFFFFFF 0b11111111111111111111111111111111 0xffffffff 0xFFFFFFFF");
 
-        let bitset64_formatted = format!("{s:?} {s:b} {s:x} {s:X} {s:#b} {s:#x} {s:#X}", s= BitSet64::ALL);
+        let bitset64_formatted = format!(
+            "{s:?} {s:b} {s:x} {s:X} {s:#b} {s:#x} {s:#X}",
+            s = BitSet64::ALL
+        );
         assert_eq!(bitset64_formatted, "BitSet64(0xffffffffffffffff) 1111111111111111111111111111111111111111111111111111111111111111 ffffffffffffffff FFFFFFFFFFFFFFFF 0b1111111111111111111111111111111111111111111111111111111111111111 0xffffffffffffffff 0xFFFFFFFFFFFFFFFF");
 
-        let bitset128_formatted = format!("{s:?} {s:b} {s:x} {s:X} {s:#b} {s:#x} {s:#X}", s= BitSet128::ALL);
+        let bitset128_formatted = format!(
+            "{s:?} {s:b} {s:x} {s:X} {s:#b} {s:#x} {s:#X}",
+            s = BitSet128::ALL
+        );
         assert_eq!(bitset128_formatted, "BitSet128(0xffffffffffffffffffffffffffffffff) 11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111 ffffffffffffffffffffffffffffffff FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF 0b11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111 0xffffffffffffffffffffffffffffffff 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
     }
 }

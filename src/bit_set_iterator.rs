@@ -208,14 +208,13 @@ mod tests {
     use crate::{bit_set_trait::BitSetTrait, BitSet16, SetElement};
 
     #[test]
-    fn test_is_sorted()
-    {
+    fn test_is_sorted() {
         let set = BitSet16::ALL;
         assert!(set.into_iter().is_sorted())
     }
 
     #[test]
-    fn test_count(){
+    fn test_count() {
         let set = BitSet16::ALL;
 
         let mut iter = set.into_iter();
@@ -256,7 +255,6 @@ mod tests {
         assert_eq!(min, Some(9));
     }
 
-
     #[test]
     fn test_iter_nth() {
         let set = BitSet16::from_fn(|x| x % 3 == 0);
@@ -273,12 +271,12 @@ mod tests {
     }
 
     #[test]
-    fn test_iter_reverse(){
+    fn test_iter_reverse() {
         let set = BitSet16::from_fn(|x| x % 3 == 0);
         let expected_set = Vec::from_iter((0..(BitSet16::MAX_COUNT)).filter(|x| x % 3 == 0));
 
-        let actual : Vec<u32>= set.into_iter().rev().collect();
-        let expected : Vec<u32>= expected_set.into_iter().rev().collect();
+        let actual: Vec<u32> = set.into_iter().rev().collect();
+        let expected: Vec<u32> = expected_set.into_iter().rev().collect();
 
         assert_eq!(actual, expected)
     }

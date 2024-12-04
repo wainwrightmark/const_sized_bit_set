@@ -176,6 +176,14 @@ pub trait BitSetTrait:
 
         result_set
     }
+
+    /// Returns the n+1th element present in the set, if there are at least n + 1 elements
+    /// To return the first element, use n == 0
+    #[must_use]
+    fn nth(&self, n: u32) -> Option<SetElement>;
+
+    #[must_use]
+    fn count_lesser_elements(&self, element: SetElement) -> u32;
 }
 
 macro_rules! impl_bit_set_trait {
@@ -263,6 +271,14 @@ macro_rules! impl_bit_set_trait {
 
             fn negate(&mut self) {
                 self.negate_const();
+            }
+
+            fn nth(&self, n: u32) -> Option<SetElement> {
+                self.nth_const(n)
+            }
+
+            fn count_lesser_elements(&self, element: SetElement) -> u32 {
+                self.count_lesser_elements_const(element)
             }
         }
     };

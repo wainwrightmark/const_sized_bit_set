@@ -1,6 +1,6 @@
 [package]
 name = "const_sized_bit_set"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2021"
 authors = ["Mark Wainwright <wainwrightml@gmail.com>"]
 description = "A bitset with a const generic size parameter indicating the number of 64 bit words to use"

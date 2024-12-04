@@ -14,17 +14,24 @@ pub struct SubsetIter<T: BitSetTrait + BitSetShiftable, const BITS: usize> {
 }
 
 impl<T: BitSetTrait + BitSetShiftable, const BITS: usize> SubsetIter<T, BITS> {
-    pub fn new(superset: T, subset_size: NonZeroU32) -> Self {
+    #[allow(clippy::cast_possible_truncation)]
+    pub fn new(superset: &T, subset_size: NonZeroU32) -> Self {
         //todo allow zero
         let mut offsets = [0; BITS];
         let mut previous_index = 0u8;
-        let mut ss = superset;
+        let mut ss = *superset;
         while let Some(new_last) = ss.pop_last() {
             offsets[new_last as usize] = previous_index;
             previous_index = new_last as u8;
         }
 
-        let next_set = T::from_iter(superset.into_iter().take(subset_size.get() as usize)); //todo faster way of doing this
+        let next_set = match superset.nth(subset_size.get() - 1) {
+            Some(nth_element) => superset.with_intersect(&T::from_first_n(nth_element + 1)),
+            None => {
+                //not enough elements in the set - return the empty set which will lead to an empty iterator
+                T::EMPTY
+            }
+        };
 
         Self {
             next_set,
@@ -91,15 +98,15 @@ impl<T: BitSetTrait + BitSetShiftable, const BITS: usize> Iterator for SubsetIte
         return Some(next_set);
     }
 
-
     //todo last, min, max
 }
 
 macro_rules! impl_iter_subsets {
     ($bit_set: ty, $bits:expr) => {
         impl $bit_set {
+            #[must_use]
             pub fn iter_subsets(&self, subset_size: NonZeroU32) -> SubsetIter<Self, $bits> {
-                SubsetIter::new(*self, subset_size)
+                SubsetIter::new(self, subset_size)
             }
         }
     };

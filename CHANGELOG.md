@@ -11,7 +11,11 @@ Possible header types:
 
 [crates.io]: https://crates.io/crates/const_sized_bit_set
 
-## v0.2.1 (2024-04-12)
+## v0.3.0 (2024-04-12)
+
+### Breaking Changes
+
+- Added `count_lesser_elements` and `nth` to `BitSetTrait`
 
 ### Features
 

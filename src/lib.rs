@@ -7,9 +7,9 @@ pub mod bit_set_iterator;
 pub mod bit_set_n;
 pub mod bit_set_shiftable;
 pub mod bit_set_trait;
-pub mod subset_iter;
 mod n_choose_k;
 pub mod set_size_n_iter;
+pub mod subset_iter;
 
 pub type SetElement = u32;
 pub use bit_set_array::*;
