@@ -147,7 +147,7 @@ pub trait BitSetTrait:
         s
     }
 
-    /// Return the set of minimal members according to a function#
+    /// Return the set of minimal members according to a function
     #[must_use]
     fn min_set_by_key<K: Ord>(&self, f: impl Fn(SetElement) -> K) -> Self {
         let mut result_set = Self::EMPTY;
