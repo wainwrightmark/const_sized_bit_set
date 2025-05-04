@@ -50,7 +50,7 @@ impl<T: BitSetTrait + BitSetShiftable> SetSizeNIter<T> {
         }
         if element_count >= T::MAX_COUNT {
             return None;
-        };
+        }
 
         let next_set = T::from_first_n(element_count);
         Some(Self { next_set })
@@ -67,7 +67,7 @@ mod tests {
     pub fn test_set_size_1_iter() {
         let actual: Vec<_> = SetSizeNIter::<BitSet8>::try_new(1).unwrap().collect();
         let expected: Vec<BitSet8> = (0..8u32).map(|x| BitSet8::EMPTY.with_inserted(x)).collect();
-        assert_eq!(expected, actual)
+        assert_eq!(expected, actual);
     }
 
     #[test]
@@ -83,16 +83,16 @@ mod tests {
             }
         }
 
-        assert_eq!(expected, actual)
+        assert_eq!(expected, actual);
     }
 
     #[test]
     pub fn test_set_size_0_iter() {
-        assert_eq!(SetSizeNIter::<BitSet8>::try_new(0), None)
+        assert_eq!(SetSizeNIter::<BitSet8>::try_new(0), None);
     }
 
     #[test]
     pub fn test_set_size_8_iter() {
-        assert_eq!(SetSizeNIter::<BitSet8>::try_new(8), None)
+        assert_eq!(SetSizeNIter::<BitSet8>::try_new(8), None);
     }
 }

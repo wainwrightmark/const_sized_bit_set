@@ -210,7 +210,7 @@ mod tests {
     #[test]
     fn test_is_sorted() {
         let set = BitSet16::ALL;
-        assert!(set.into_iter().is_sorted())
+        assert!(set.into_iter().is_sorted());
     }
 
     #[test]
@@ -278,7 +278,7 @@ mod tests {
         let actual: Vec<u32> = set.into_iter().rev().collect();
         let expected: Vec<u32> = expected_set.into_iter().rev().collect();
 
-        assert_eq!(actual, expected)
+        assert_eq!(actual, expected);
     }
 
     #[test]

@@ -175,7 +175,7 @@ mod tests {
                 );
             }
 
-            let mut sorted = actual.into_iter().copied().collect::<Vec<_>>();
+            let mut sorted = actual.iter().copied().collect::<Vec<_>>();
             sorted.sort();
 
             let _assert_unique = sorted.into_iter().reduce(|prev, x| {

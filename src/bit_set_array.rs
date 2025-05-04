@@ -612,7 +612,7 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
 
                     multiplier += ones;
                 }
-            };
+            }
         }
 
         S::sum(core::iter::once(total as usize))
