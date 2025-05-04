@@ -468,6 +468,45 @@ impl<const BITS_PER_NUMBER: u32> BitMap64<BITS_PER_NUMBER> {
         sum
     }
 
+    /// Set every value that is current at least 1 to `new_value`
+    pub fn flatten(&mut self, new_value: Inner64) {
+        let mut set_bits = Self::MSB_MASK & self.0;
+        let mut mask = Self::MSB_MASK;
+
+        let mut shift = 1;
+        while shift < BITS_PER_NUMBER {
+            set_bits >>= 1;
+            mask >>= 1;
+            set_bits |= self.0 & mask;
+            shift += 1;
+        }
+
+        let new_inner = set_bits * (new_value & Self::ELEMENT_0_MASK);
+        self.0 = new_inner
+    }
+
+    pub fn find_index_of_value(&self, value: Inner64)-> Option<u32>{
+        // `mapped` will be 1 on bits with the correct value.
+        let mapped = !((Self::LSB_MASK * value) ^ self.0);
+        // We are looking for entries which are all 1s
+
+        let mut current = Self::MSB_MASK & mapped;
+        let mut shift = 1;
+        while shift < BITS_PER_NUMBER {
+            current >>= 1;
+            current &= mapped;
+            shift += 1;
+        }
+
+        if current== 0{
+            return None;
+        }
+
+        let r = current.trailing_zeros() / BITS_PER_NUMBER;
+        Some(r)
+    }
+
+
     pub const fn wrapping_increment(&mut self, key: u32, amount: Inner64) {
         let shift = key * BITS_PER_NUMBER;
         let i = self.0 >> shift;
@@ -487,32 +526,24 @@ impl<const BITS_PER_NUMBER: u32> BitMap64<BITS_PER_NUMBER> {
         self.0 ^= new_mask;
     }
 
-    /// Set every value that is current at least 1 to `new_value`
-    pub fn flatten(&mut self, new_value: Inner64) {
-        let mut set_bits = Self::MSB_MASK & self.0;
-        let mut mask = Self::MSB_MASK;
-
-        let mut shift = 1;
-        while shift < BITS_PER_NUMBER {
-            set_bits >>= 1;
-            mask >>= 1;
-            set_bits |= self.0 & mask;
-            shift += 1;
-        }
-
-        let new_inner = set_bits * (new_value & Self::ELEMENT_0_MASK);
-        self.0 = new_inner
-    }
-
-    // pub fn find_index_of_value(&self, value: Inner64)-> Option<u32>{
-    //     todo!()
-    // }
-
     // pub fn saturating_increment(&mut self, key: u32, amount: Inner64) {
-    //     todo!()
+    //     let shift = key * BITS_PER_NUMBER;
+    //     let i = self.0 >> shift;
+    //     let v = i & Self::ELEMENT_0_MASK;
+    //     let value = v.wrapping_add(amount & Self::ELEMENT_0_MASK).min(Self::ELEMENT_0_MASK);
+    //     let new_mask = (value ^ v) << shift;
+    //     self.0 ^= new_mask;
     // }
 
     // pub fn saturating_decrement(&mut self, key: u32, amount: Inner64) {
+    //     todo!()
+    // }
+
+    // pub fn checked_increment(&mut self, key: u32, amount: Inner64)-> bool {
+    //     todo!()
+    // }
+
+    // pub fn checked_decrement(&mut self, key: u32, amount: Inner64)-> bool {
     //     todo!()
     // }
 }
@@ -866,5 +897,19 @@ mod tests {
         assert_eq!(format!("{set1:x}"), "e1fc87e0c200492d");
         assert_eq!(format!("{set1:b}"), "1110000111111100100001111110000011000010000000000100100100101101");
         assert_eq!(format!("{set1:?}"), "[13, 2, 9, 4, 0, 0, 2, 12, 0, 14, 7, 8, 12, 15, 1, 14]");
+    }
+
+    #[test]
+    fn test_index_of_value(){
+        let sequence1: [u64; 16] = [13, 2, 9, 4, 0, 0, 2, 12, 0, 14, 7, 8, 12, 15, 1, 14];
+        let set1 = BitMap64::<4>::from_iter(sequence1);
+
+
+        for value in 0u64..16{
+            let expected = sequence1.iter().position(|x| *x== value).map(|x| x as u32);
+            let actual =set1.find_index_of_value(value);
+
+            assert_eq!(expected, actual, "Index of {value}")
+        }
     }
 }
