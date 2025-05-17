@@ -1,7 +1,7 @@
 [package]
 name = "const_sized_bit_set"
 version = "0.3.0"
-edition = "2021"
+edition = "2024"
 authors = ["Mark Wainwright <wainwrightml@gmail.com>"]
 description = "A bitset with a const generic size parameter indicating the number of 64 bit words to use"
 documentation = "https://docs.rs/const_sized_bit_set"
@@ -14,11 +14,11 @@ exclude = []
 
 [dependencies]
 serde = { version = "1.0", features = ["derive"], optional = true }
-serde_arrays = { version = "0.1", optional = true }
+serde_arrays = { version = "0.2", optional = true }
 
 [dev-dependencies]
 serde = { version = "1.0", features = ["derive"] }
-serde_arrays = { version = "0.1.0" }
+serde_arrays = { version = "0.2" }
 serde_test = "1.0"
 iai-callgrind = "0.10.2"
 criterion = "0.5"
