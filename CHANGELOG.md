@@ -20,6 +20,7 @@ Possible header types:
 
 ### Features
 - Added `BitMap64`
+- impl `BitSetShiftable` for `BitSetArray`
 
 ## v0.3.0 (2024-04-12)
 

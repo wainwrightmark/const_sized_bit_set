@@ -1,3 +1,4 @@
+use crate::bit_set_shiftable::BitSetShiftable;
 use crate::n_choose_k::n_choose_k;
 use crate::{BitSet64, SetElement};
 use core::fmt::{Debug, Write};
@@ -927,9 +928,119 @@ impl<const WORDS: usize> crate::bit_set_trait::BitSetTrait for BitSetArray<WORDS
     }
 }
 
+impl<const WORDS: usize> BitSetShiftable for BitSetArray<WORDS> {
+    fn t_zeros(&self) -> u32 {
+        let mut total = 0;
+        for i in 0..WORDS {
+            let word = self.0[i];
+            if word == 0 {
+                total += u64::BITS;
+            } else {
+                total += word.trailing_zeros();
+                return total;
+            }
+        }
+
+        return total;
+    }
+
+    fn t_ones(&self) -> u32 {
+        let mut total = 0;
+        for i in 0..WORDS {
+            let word = self.0[i];
+            if word == u64::MAX {
+                total += u64::BITS;
+            } else {
+                total += word.trailing_ones();
+                return total;
+            }
+        }
+
+        return total;
+    }
+
+    fn l_zeros(&self) -> u32 {
+        let mut total = 0;
+        for i in (0..WORDS).rev() {
+            let word = self.0[i];
+            if word == 0 {
+                total += u64::BITS;
+            } else {
+                total += word.leading_zeros();
+                return total;
+            }
+        }
+
+        return total;
+    }
+
+    fn l_ones(&self) -> u32 {
+        let mut total = 0;
+        for i in (0..WORDS).rev() {
+            let word = self.0[i];
+            if word == u64::MAX {
+                total += u64::BITS;
+            } else {
+                total += word.leading_ones();
+                return total;
+            }
+        }
+
+        return total;
+    }
+
+    fn shift_right(&mut self, n: SetElement) {
+        let words_shift = (n / u64::BITS) as usize;
+        let bits_shift = n % u64::BITS;
+
+        //note we rotate left actually because the bit ordering is opposite to the array ordering
+        self.0.rotate_left(words_shift);
+        self.0[WORDS.saturating_sub(words_shift)..].fill(0);
+
+        if bits_shift > 0 {
+            let bits_shift_inverse = u64::BITS - bits_shift;
+            let mut index_1 = 0;
+            loop {
+                self.0[index_1] >>= bits_shift;
+                let index_2 = index_1 + 1;
+                if index_2 < WORDS {
+                    self.0[index_1] |= self.0[index_2] << bits_shift_inverse;
+                    index_1 = index_2;
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    fn shift_left(&mut self, n: SetElement) {
+        let words_shift = (n / u64::BITS) as usize;
+        let bits_shift = n % u64::BITS;
+
+        //note we rotate right actually because the bit ordering is opposite to the array ordering
+        self.0.rotate_right(words_shift);
+        self.0[..words_shift].fill(0);
+
+        if bits_shift > 0 {
+            let bits_shift_inverse = u64::BITS - bits_shift;
+            let mut index_1 = WORDS.saturating_sub(1);
+            loop {
+                self.0[index_1] <<= bits_shift;
+
+                let Some(index_2) = index_1.checked_sub(1) else {
+                    break;
+                };
+                self.0[index_1] |= self.0[index_2] >> bits_shift_inverse;
+                index_1 = index_2;
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 pub mod tests {
     use crate::bit_set_array::BitSetArray;
+    use crate::bit_set_shiftable::BitSetShiftable;
     use crate::bit_set_trait::BitSetTrait;
     use crate::n_choose_k::*;
     use std::collections::BTreeSet;
@@ -1762,7 +1873,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_overlaps(){
+    fn test_overlaps() {
         let mod3_is0 = BitSetArray::<4>::from_fn(|x| x % 3 == 0);
         let mod3_is1 = BitSetArray::<4>::from_fn(|x| x % 3 == 1);
 
@@ -1776,7 +1887,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_except_with(){
+    fn test_except_with() {
         let mod3_is0 = BitSetArray::<2>::from_fn(|x| x % 3 == 0);
         let mod5_is0 = BitSetArray::<2>::from_fn(|x| x % 5 == 0);
 
@@ -1788,21 +1899,131 @@ pub mod tests {
     }
 
     #[test]
-    fn test_nth(){
+    fn test_nth() {
         let mod20_is0 = BitSetArray::<2>::from_fn(|x| x % 20 == 0);
         let elements: Vec<Option<u32>> = (0..8).map(|x| mod20_is0.nth(x)).collect();
 
-        assert_eq!(elements, vec![Some(0), Some(20), Some(40), Some(60), Some(80), Some(100), Some(120), None])
+        assert_eq!(
+            elements,
+            vec![
+                Some(0),
+                Some(20),
+                Some(40),
+                Some(60),
+                Some(80),
+                Some(100),
+                Some(120),
+                None
+            ]
+        )
     }
 
     #[test]
-    fn test_count_lesser_elements(){
+    fn test_count_lesser_elements() {
         let mod20_is0 = BitSetArray::<2>::from_fn(|x| x % 20 == 0);
 
-        for x in 0..128{
+        for x in 0..128 {
             let actual = mod20_is0.count_lesser_elements(x);
-            let expected = (x + 19) / 20 ;
+            let expected = (x + 19) / 20;
             assert_eq!(actual, expected)
         }
+    }
+
+    #[test]
+    fn test_trailing_zeros() {
+        assert_eq!(BitSetArray::<2>::from_iter([0u32].into_iter()).t_zeros(), 0);
+        assert_eq!(BitSetArray::<2>::from_iter([2u32].into_iter()).t_zeros(), 2);
+        assert_eq!(
+            BitSetArray::<2>::from_iter([72u32].into_iter()).t_zeros(),
+            72
+        );
+        assert_eq!(BitSetArray::<2>::EMPTY.t_zeros(), 128);
+    }
+
+    #[test]
+    fn test_trailing_ones() {
+        assert_eq!(BitSetArray::<2>::from_iter([1u32].into_iter()).t_ones(), 0);
+        assert_eq!(BitSetArray::<2>::from_first_n_const(2).t_ones(), 2);
+        assert_eq!(BitSetArray::<2>::from_first_n_const(72).t_ones(), 72);
+
+        assert_eq!(BitSetArray::<2>::ALL.t_ones(), 128);
+    }
+
+    #[test]
+    fn test_leading_zeros() {
+        assert_eq!(
+            BitSetArray::<2>::from_iter([127u32].into_iter()).l_zeros(),
+            0
+        );
+        assert_eq!(
+            BitSetArray::<2>::from_iter([126u32].into_iter()).l_zeros(),
+            1
+        );
+        assert_eq!(
+            BitSetArray::<2>::from_iter([2u32].into_iter()).l_zeros(),
+            125
+        );
+
+        assert_eq!(BitSetArray::<2>::EMPTY.l_zeros(), 128);
+    }
+
+    #[test]
+    fn test_leading_ones() {
+        assert_eq!(
+            BitSetArray::<2>::from_iter([127u32].into_iter())
+                .with_negated()
+                .l_ones(),
+            0
+        );
+        assert_eq!(
+            BitSetArray::<2>::from_iter([126u32].into_iter())
+                .with_negated()
+                .l_ones(),
+            1
+        );
+        assert_eq!(
+            BitSetArray::<2>::from_iter([2u32].into_iter())
+                .with_negated()
+                .l_ones(),
+            125
+        );
+        assert_eq!(BitSetArray::<2>::ALL.l_ones(), 128);
+    }
+
+    #[test]
+    fn test_shift_right() {
+        let mut set = BitSetArray::<4>::from_fn(|x| x % 3 == 0);
+        let expected = BitSetArray::<4>::from_fn(|x| x % 3 == 1 && x < 128);
+
+        set.shift_right(128);
+
+        assert_eq!(set, expected);
+
+        let mut set2 = BitSetArray::<4>::from_fn(|x| x % 3 == 0);
+
+        //should be the same as before, just in two separate shifts
+        set2.shift_right(120);
+        set2.shift_right(8);
+
+        assert_eq!(set2, expected);
+    }
+    
+    
+     #[test]
+    fn test_shift_left() {
+        let mut set = BitSetArray::<4>::from_fn(|x| x % 3 == 0);
+        let expected = BitSetArray::<4>::from_fn(|x| x % 3 == 2 && x >= 128);
+
+        set.shift_left(128);
+
+        assert_eq!(set, expected);
+
+        let mut set2 = BitSetArray::<4>::from_fn(|x| x % 3 == 0);
+
+        //should be the same as before, just in two separate shifts
+        set2.shift_left(120);
+        set2.shift_left(8);
+
+        assert_eq!(set2, expected);
     }
 }
