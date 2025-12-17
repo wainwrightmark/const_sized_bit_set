@@ -15,7 +15,11 @@ Possible header types:
 
 ### Breaking Changes
 
-- `BitSetArray` now implements `BitSet`. Some of it's methods have been renamed and some now accept/return `u32` instead of `usize`
+- `BitSetArray` now implements `BitSetTrait`. Some of it's methods have been renamed and some now accept/return `u32` instead of `usize`
+- Minimum supported rust version is now 1.85 (for 2024 edition)
+
+### Features
+- Added `BitMap64`
 
 ## v0.3.0 (2024-04-12)
 
@@ -33,7 +37,6 @@ Possible header types:
 ### Breaking Changes
 
 - `BitSet` is renamed `BitSetArray`
-- Added `BitSet` trait
 - Minimum supported rust version is now 1.83
 
 ### Features
