@@ -11,6 +11,12 @@ Possible header types:
 
 [crates.io]: https://crates.io/crates/const_sized_bit_set
 
+## v0.4.0 (2025-12-18)
+
+### Breaking Changes
+
+- `BitSetArray` now implements `BitSet`. Some of it's methods have been renamed and some now accept/return `u32` instead of `usize`
+
 ## v0.3.0 (2024-04-12)
 
 ### Breaking Changes

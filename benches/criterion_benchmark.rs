@@ -1,10 +1,10 @@
 use const_sized_bit_set::*;
-use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion};
+use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 
 pub fn from_fn_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("from_fn");
 
-    fn create_from_fn<const W: usize>(modulo: usize) -> BitSetArray<W> {
+    fn create_from_fn<const W: usize>(modulo: u32) -> BitSetArray<W> {
         BitSetArray::<W>::from_fn(|x| x % modulo == 0)
     }
 
@@ -21,8 +21,8 @@ pub fn from_fn_benchmark(c: &mut Criterion) {
 }
 
 pub fn sum_benchmark(c: &mut Criterion) {
-    fn sum_elements<const W: usize>(set: BitSetArray<W>) -> usize {
-        let mut sum = 0usize;
+    fn sum_elements<const W: usize>(set: BitSetArray<W>) -> u32 {
+        let mut sum = 0u32;
         for x in set.into_iter() {
             sum = sum.wrapping_add(x);
         }
@@ -55,8 +55,8 @@ pub fn sum_benchmark(c: &mut Criterion) {
 pub fn sum_all_back_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("Sum_all_back");
 
-    fn sum_elements_back<const W: usize>(set: BitSetArray<W>) -> usize {
-        let mut sum = 0usize;
+    fn sum_elements_back<const W: usize>(set: BitSetArray<W>) -> u32 {
+        let mut sum = 0u32;
         for x in set.into_iter().rev() {
             sum = sum.wrapping_add(x);
         }
@@ -77,7 +77,7 @@ pub fn sum_all_back_benchmark(c: &mut Criterion) {
 }
 
 pub fn sum_with_fold_benchmark(c: &mut Criterion) {
-    fn sum_with_fold_elements<const W: usize>(set: BitSetArray<W>) -> usize {
+    fn sum_with_fold_elements<const W: usize>(set: BitSetArray<W>) -> u32 {
         set.into_iter().fold(0, |acc, x| acc + x)
     }
 
@@ -107,7 +107,7 @@ pub fn sum_with_fold_benchmark(c: &mut Criterion) {
 pub fn sum_with_fold_all_back_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("Sum_with_fold_all_back");
 
-    fn sum_with_fold_elements_back<const W: usize>(set: BitSetArray<W>) -> usize {
+    fn sum_with_fold_elements_back<const W: usize>(set: BitSetArray<W>) -> u32 {
         set.into_iter().rfold(0, |acc, x| acc + x)
     }
 
@@ -165,4 +165,4 @@ criterion_group!(
 criterion_main!(benches);
 
 const HALF_EMPTY_SET: BitSetArray<1> =
-    BitSetArray::from_inner([0b101010101010101010101010101010101010101010101010101010101010101]);
+    BitSetArray::from_inner_const([0b101010101010101010101010101010101010101010101010101010101010101]);

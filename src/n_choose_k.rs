@@ -5,11 +5,14 @@ pub(crate) struct NChooseK {
     result: u32,
 }
 
-pub fn n_choose_k(n: u32, k: u32) -> u32 {
+pub const fn n_choose_k(n: u32, k: u32) -> u32 {
     let mut result = 1;
-    for i in 0..(k.min(n - k)) {
+    let m = if k <= n-k {k} else {n-k};
+    let mut i = 0;
+    while i < m {
         result *= n - i;
         result /= i + 1;
+        i += 1;
     }
 
     result
@@ -44,12 +47,15 @@ impl NChooseK {
 }
 
 impl NChooseK {
-    pub fn new(n: u32, k: u32, result: u32) -> Self {
-        debug_assert_eq!(result, n_choose_k(n, k));
+    pub const fn new(n: u32, k: u32, result: u32) -> Self {
+        #[cfg(debug_assertions)]
+        if result != n_choose_k(n, k){
+            panic!("invalid n choose k")
+        }        
         Self { n, k, result }
     }
 
-    pub fn result(&self) -> u32 {
+    pub const fn result(&self) -> u32 {
         self.result
     }
 }

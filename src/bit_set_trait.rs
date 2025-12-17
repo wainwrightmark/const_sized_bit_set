@@ -277,6 +277,8 @@ macro_rules! impl_bit_set_trait {
                 self.nth_const(n)
             }
 
+            /// Returns the number of elements less than `element` in the set
+            /// Returns the same result regardless of whether `element` is present
             fn count_lesser_elements(&self, element: SetElement) -> u32 {
                 self.count_lesser_elements_const(element)
             }
