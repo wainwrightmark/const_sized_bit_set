@@ -1,8 +1,6 @@
-use core::num::NonZeroU32;
-
 use crate::{
-    bit_set_shiftable::BitSetShiftable, bit_set_trait::BitSetTrait, BitSet128, BitSet16, BitSet32,
-    BitSet64, BitSet8,
+    BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, bit_set_shiftable::BitSetShiftable,
+    bit_set_trait::BitSetTrait,
 };
 
 #[derive(Debug, Clone, PartialEq)]
@@ -15,7 +13,17 @@ pub struct SubsetIter<T: BitSetTrait + BitSetShiftable, const BITS: usize> {
 
 impl<T: BitSetTrait + BitSetShiftable, const BITS: usize> SubsetIter<T, BITS> {
     #[allow(clippy::cast_possible_truncation)]
-    pub fn new(superset: &T, subset_size: NonZeroU32) -> Self {
+    pub fn new(superset: &T, subset_size: u32) -> Self {
+        let Some(subset_size_minus_one) = subset_size.checked_sub(1) else {
+            let mut mappings =[0; BITS];
+            if let Some(lm) = mappings.last_mut(){
+                *lm = u8::MAX; //special way to mark that we need to return the empty set first
+            }
+            return Self {
+                next_set: T::EMPTY,
+                mappings,
+            };
+        };
         //todo allow zero
         let mut offsets = [0; BITS];
         let mut previous_index = 0u8;
@@ -25,7 +33,7 @@ impl<T: BitSetTrait + BitSetShiftable, const BITS: usize> SubsetIter<T, BITS> {
             previous_index = new_last as u8;
         }
 
-        let next_set = match superset.nth(subset_size.get() - 1) {
+        let next_set = match superset.nth(subset_size_minus_one) {
             Some(nth_element) => superset.with_intersect(&T::from_first_n(nth_element + 1)),
             None => {
                 //not enough elements in the set - return the empty set which will lead to an empty iterator
@@ -52,7 +60,13 @@ impl<T: BitSetTrait + BitSetShiftable, const BITS: usize> Iterator for SubsetIte
     fn next(&mut self) -> Option<Self::Item> {
         let next_set = self.next_set.clone();
 
-        let Some(left_most_index) = self.next_set.pop_last() else {
+        let Some(left_most_index) = self.next_set.pop_last() else {            
+
+            let mappings_last = self.mappings.last_mut()?;
+            if mappings_last == &u8::MAX{ //special marker for when we need to return the empty set
+                *mappings_last = 0;
+                return Some(Self::Item::EMPTY);    
+            }
             return None;
         };
 
@@ -105,7 +119,7 @@ macro_rules! impl_iter_subsets {
     ($bit_set: ty, $bits:expr) => {
         impl $bit_set {
             #[must_use]
-            pub fn iter_subsets(&self, subset_size: NonZeroU32) -> SubsetIter<Self, $bits> {
+            pub fn iter_subsets(&self, subset_size: u32) -> SubsetIter<Self, $bits> {
                 SubsetIter::new(self, subset_size)
             }
         }
@@ -120,18 +134,15 @@ impl_iter_subsets!(BitSet128, 128);
 
 #[cfg(test)]
 mod tests {
-    use core::num::NonZeroU32;
 
-    use crate::{bit_set_trait::BitSetTrait, BitSet8};
+    use crate::{BitSet8, bit_set_trait::BitSetTrait};
 
     #[test]
     pub fn test_subsets_size_8() {
         let superset = BitSet8::ALL;
 
         assert_eq!(
-            superset
-                .iter_subsets(NonZeroU32::new(8).unwrap())
-                .collect::<Vec<_>>(),
+            superset.iter_subsets(8).collect::<Vec<_>>(),
             vec![BitSet8::ALL]
         );
     }
@@ -141,9 +152,7 @@ mod tests {
         let superset = BitSet8::ALL;
 
         assert_eq!(
-            superset
-                .iter_subsets(NonZeroU32::new(7).unwrap())
-                .collect::<Vec<_>>(),
+            superset.iter_subsets(7).collect::<Vec<_>>(),
             vec![
                 BitSet8::from_inner_const(0b01111111),
                 BitSet8::from_inner_const(0b10111111),
@@ -157,10 +166,23 @@ mod tests {
         );
     }
 
+    pub const fn n_choose_k(n: u32, k: u32) -> u32 {
+        let mut result = 1;
+        let m = if k <= n - k { k } else { n - k };
+        let mut i = 0;
+        while i < m {
+            result *= n - i;
+            result /= i + 1;
+            i += 1;
+        }
+
+        result
+    }
+
     #[test]
     pub fn fuzz_test() {
         fn test_subsets(actual: &[BitSet8], superset: BitSet8, size: u32) {
-            let expected_count = crate::n_choose_k::n_choose_k(superset.len_const(), size);
+            let expected_count = n_choose_k(superset.len_const(), size);
 
             assert_eq!(
                 actual.len() as u32,
@@ -187,9 +209,7 @@ mod tests {
         for bitset in 0..=u8::MAX {
             let bitset = BitSet8::from_inner_const(bitset);
             for size in 1..=bitset.len_const() {
-                let subsets = bitset
-                    .iter_subsets(NonZeroU32::try_from(size).unwrap())
-                    .collect::<Vec<_>>();
+                let subsets = bitset.iter_subsets(size).collect::<Vec<_>>();
 
                 test_subsets(&subsets, bitset, size);
             }
@@ -201,9 +221,7 @@ mod tests {
         let superset = BitSet8::from_inner(0b11011111);
 
         assert_eq!(
-            superset
-                .iter_subsets(NonZeroU32::new(3).unwrap())
-                .collect::<Vec<_>>(),
+            superset.iter_subsets(3).collect::<Vec<_>>(),
             vec![
                 //Note this is 35 lines
                 BitSet8::from_inner_const(0b111),
@@ -250,9 +268,7 @@ mod tests {
         let superset = BitSet8::from_inner(0b01010101);
 
         assert_eq!(
-            superset
-                .iter_subsets(NonZeroU32::new(2).unwrap())
-                .collect::<Vec<_>>(),
+            superset.iter_subsets(2).collect::<Vec<_>>(),
             vec![
                 BitSet8::from_inner_const(0b00000101),
                 BitSet8::from_inner_const(0b00010001),
@@ -269,9 +285,7 @@ mod tests {
         let superset = BitSet8::from_inner(0b01010101);
 
         assert_eq!(
-            superset
-                .iter_subsets(NonZeroU32::new(1).unwrap())
-                .collect::<Vec<_>>(),
+            superset.iter_subsets(1).collect::<Vec<_>>(),
             vec![
                 BitSet8::from_inner_const(0b00000001),
                 BitSet8::from_inner_const(0b00000100),
@@ -279,5 +293,12 @@ mod tests {
                 BitSet8::from_inner_const(0b01000000),
             ]
         );
+    }
+
+    #[test]
+    pub fn test_subsets_size_0() {
+        let superset = BitSet8::from_inner(0b01010101);
+
+        assert_eq!(superset.iter_subsets(0).collect::<Vec<_>>(), vec![BitSet8::EMPTY]);
     }
 }

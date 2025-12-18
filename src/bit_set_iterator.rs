@@ -346,6 +346,6 @@ mod tests {
 
         assert_eq!(sum, expected_sum);
 
-        assert_eq!(BitSet16::ALL.into_iter().sum::<SetElement>(), (0..16).sum());
+        assert_eq!(BitSet16::ALL.into_iter().sum::<SetElement>(), (0u32..16).sum::<u32>());
     }
 }

@@ -1,10 +1,10 @@
-use const_sized_bit_set::{bit_set_trait::BitSetTrait, *};
+use const_sized_bit_set::*;
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 
 pub fn subset_iter_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("subset_iter");
 
-    fn subsets_iter_func<const W: usize>(initial_set: BitSetArray<W>, subset_size: u32) -> u32 {
+    fn subsets_iter_func(initial_set: BitSetArray<4>, subset_size: u32) -> u32 {
         initial_set
             .iter_subsets(subset_size)
             .map(|x| x.count())
@@ -25,7 +25,7 @@ pub fn subset_iter_benchmark(c: &mut Criterion) {
     group.bench_with_input(BenchmarkId::from_parameter(5), &5, |b, &subset_size| {
         b.iter(|| subsets_iter_func(INITIAL_SET, subset_size));
     });
-    
+
     group.bench_with_input(BenchmarkId::from_parameter(7), &7, |b, &subset_size| {
         b.iter(|| subsets_iter_func(INITIAL_SET, subset_size));
     });
