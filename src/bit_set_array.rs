@@ -475,6 +475,68 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
         }
         None
     }
+
+    /// Return the smallest element greater than `index`
+    /// Will return `None` if no such element exists
+    /// Will return the same regardless of whether `element` is present
+    #[must_use]
+    pub const fn first_after_const(&self, index: SetElement) -> Option<SetElement> {
+        let mut word = (index / u64::BITS) as usize;
+        let e = index % u64::BITS;
+
+        if word >= WORDS{
+            return None;
+        }
+
+        if let Some(x) = BitSet64::from_inner_const(self.0[word]).first_after_const(e) {
+            return Some(x + (word as u32 * u64::BITS));
+        }
+        word += 1;
+
+        while word < WORDS {
+            let a = BitSet64::from_inner_const(self.0[word]);
+            if let Some(x) = a.first_const() {
+                return Some(x + (word as u32 * u64::BITS));
+            } else {
+                word += 1;
+            }
+        }
+        return None;
+    }
+
+    /// Return the largest element less than `index`
+    /// Will return `None` if no such element exists
+    /// Will return the same regardless of whether `element` is present
+    #[must_use]
+    pub const fn first_before_const(&self, index: SetElement) -> Option<SetElement> {
+        let mut word = (index / u64::BITS) as usize;
+        let e = index % u64::BITS;
+
+        if word >= WORDS{
+            return self.last_const();
+        }
+
+        if let Some(x) = BitSet64::from_inner_const(self.0[word]).first_before_const(e) {
+            return Some(x + (word as u32 * u64::BITS));
+        }
+
+        match word.checked_sub(1) {
+            Some(w) => word = w,
+            None => return None,
+        }
+
+        loop {
+            let a = BitSet64::from_inner_const(self.0[word]);
+            if let Some(x) = a.last_const() {
+                return Some(x + (word as u32 * u64::BITS));
+            }
+
+            match word.checked_sub(1) {
+                Some(w) => word = w,
+                None => return None,
+            }
+        }
+    }
 }
 
 impl BitSetArray<1> {
@@ -925,6 +987,14 @@ impl<const WORDS: usize> crate::bit_set_trait::BitSetTrait for BitSetArray<WORDS
 
     fn count_lesser_elements(&self, element: crate::SetElement) -> u32 {
         self.count_lesser_elements_const(element)
+    }
+
+    fn first_after(&self, index: SetElement) -> Option<SetElement> {
+        self.first_after_const(index)
+    }
+
+    fn first_before(&self, index: SetElement) -> Option<SetElement> {
+        self.first_before_const(index)
     }
 }
 
@@ -1832,14 +1902,20 @@ pub mod tests {
 
         for size in 0u32..=5 {
             let iter = set.iter_subsets(size);
-            let expected_len = n_choose_k(set.count(), size);            
+            let expected_len = n_choose_k(set.count(), size);
             let results: Vec<_> = iter.collect();
 
-            assert_eq!(results.len(), expected_len as usize,
-            "Should be {} results but there were {}. [{}]",
+            assert_eq!(
+                results.len(),
+                expected_len as usize,
+                "Should be {} results but there were {}. [{}]",
                 expected_len,
                 results.len(),
-              results.iter().fold(String::new(), |mut acc, x|{acc.push_str(&x.to_string()); acc }) );
+                results.iter().fold(String::new(), |mut acc, x| {
+                    acc.push_str(&x.to_string());
+                    acc
+                })
+            );
 
             for r in &results {
                 assert_eq!(r.count(), size, "Result should have the correct size");
@@ -2040,5 +2116,37 @@ pub mod tests {
         set2.shift_left(8);
 
         assert_eq!(set2, expected);
+    }
+
+
+     #[test]
+    fn test_first_before() {
+        let set = BitSetArray::<2>::from_fn(|x| x % 2 == 0);
+
+        for e in 0..=128u32 {
+            let expected = if e % 2 == 0 {
+                e.checked_sub(2)
+            } else {
+                e.checked_sub(1)
+            };
+            let actual = set.first_before(e);
+            assert_eq!(actual, expected)
+        }
+    }
+    
+    #[test]
+    fn test_first_after() {
+        let set = BitSetArray::<2>::from_fn(|x| x % 2 == 0);
+
+        for e in 0..=128u32 {
+            let expected = if e % 2 == 0 {
+                e + 2
+            } else {
+                e + 1
+            };
+            let expected = if expected >= 128 {None} else {Some(expected)};
+            let actual = set.first_after(e);
+            assert_eq!(actual, expected, "e = {e}")
+        }
     }
 }

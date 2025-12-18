@@ -184,6 +184,16 @@ pub trait BitSetTrait:
 
     #[must_use]
     fn count_lesser_elements(&self, element: SetElement) -> u32;
+
+    /// Return the smallest element greater than `index`
+    /// Will return the same regardless of whether `element` is present
+    #[must_use]
+    fn first_after(&self, index: SetElement)-> Option<SetElement>;
+
+    /// Return the smallest element less than `index`
+    /// Will return the same regardless of whether `element` is present
+    #[must_use]
+    fn first_before(&self, index: SetElement)-> Option<SetElement>;
 }
 
 macro_rules! impl_bit_set_trait {
@@ -281,6 +291,14 @@ macro_rules! impl_bit_set_trait {
             /// Returns the same result regardless of whether `element` is present
             fn count_lesser_elements(&self, element: SetElement) -> u32 {
                 self.count_lesser_elements_const(element)
+            }
+
+            fn first_after(&self, index: SetElement) -> Option<SetElement> {
+                self.first_after_const(index)
+            }
+            
+            fn first_before(&self, index: SetElement) -> Option<SetElement> {
+                self.first_before_const(index)
             }
         }
     };

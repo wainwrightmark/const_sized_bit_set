@@ -1,6 +1,6 @@
 use core::fmt::{self, Binary, LowerHex, UpperHex};
 
-use crate::{bit_set_iterator::BitSetIterator, SetElement};
+use crate::{SetElement, bit_set_iterator::BitSetIterator};
 #[cfg(any(test, feature = "serde"))]
 use serde::{Deserialize, Serialize};
 
@@ -260,6 +260,39 @@ macro_rules! define_bit_set_n {
                     chunk_size /= 2;
                 }
             }
+
+            /// Return the smallest element greater than `index`
+            /// Will return `None` if no such element exists
+            /// Will return the same regardless of whether `element` is present
+            #[must_use]
+            pub const fn first_after_const(&self, index: SetElement) -> Option<SetElement> {
+                let Some(inner) = self.inner_const().checked_shr(index.wrapping_add(1)) else {
+                    return None;
+                };
+                if inner == 0 {
+                    return None;
+                } else {
+                    return Some(inner.trailing_zeros() + index + 1);
+                }
+            }
+
+            /// Return the largest element less than `index`
+            /// Will return `None` if no such element exists
+            /// Will return the same regardless of whether `element` is present
+            #[must_use]
+            pub const fn first_before_const(&self, index: SetElement) -> Option<SetElement> {
+                let Some(inner) = self
+                    .inner_const()
+                    .checked_shl(Self::MAX_COUNT.wrapping_sub(index))
+                else {
+                    return None;
+                };
+                if inner == 0 {
+                    return None;
+                } else {
+                    return Some(index - 1 - inner.leading_zeros());
+                }
+            }
         }
 
         impl Extend<SetElement> for $name {
@@ -353,7 +386,7 @@ impl_binary_and_hex!(BitSet128);
 #[cfg(test)]
 mod tests {
     use crate::{
-        bit_set_n::BitSet16, bit_set_trait::BitSetTrait, BitSet128, BitSet32, BitSet64, BitSet8,
+        BitSet8, BitSet32, BitSet64, BitSet128, bit_set_n::BitSet16, bit_set_trait::BitSetTrait,
     };
 
     #[test]
@@ -523,6 +556,37 @@ mod tests {
     }
 
     #[test]
+    fn test_first_before() {
+        let set = BitSet8::from_fn(|x| x % 2 == 0);
+
+        for e in 0..=8u32 {
+            let expected = if e % 2 == 0 {
+                e.checked_sub(2)
+            } else {
+                e.checked_sub(1)
+            };
+            let actual = set.first_before(e);
+            assert_eq!(actual, expected)
+        }
+    }
+    
+    #[test]
+    fn test_first_after() {
+        let set = BitSet8::from_fn(|x| x % 2 == 0);
+
+        for e in 0..=8u32 {
+            let expected = if e % 2 == 0 {
+                e + 2
+            } else {
+                e + 1
+            };
+            let expected = if expected >= 8 {None} else {Some(expected)};
+            let actual = set.first_after(e);
+            assert_eq!(actual, expected, "e = {e}")
+        }
+    }
+
+    #[test]
     fn test_formatting() {
         let bitset8_formatted = format!(
             "{s:?} {s:b} {s:x} {s:X} {s:#b} {s:#x} {s:#X}",
@@ -537,24 +601,36 @@ mod tests {
             "{s:?} {s:b} {s:x} {s:X} {s:#b} {s:#x} {s:#X}",
             s = BitSet16::ALL
         );
-        assert_eq!(bitset16_formatted, "BitSet16(0b1111111111111111) 1111111111111111 ffff FFFF 0b1111111111111111 0xffff 0xFFFF");
+        assert_eq!(
+            bitset16_formatted,
+            "BitSet16(0b1111111111111111) 1111111111111111 ffff FFFF 0b1111111111111111 0xffff 0xFFFF"
+        );
 
         let bitset32_formatted = format!(
             "{s:?} {s:b} {s:x} {s:X} {s:#b} {s:#x} {s:#X}",
             s = BitSet32::ALL
         );
-        assert_eq!(bitset32_formatted, "BitSet32(0xffffffff) 11111111111111111111111111111111 ffffffff FFFFFFFF 0b11111111111111111111111111111111 0xffffffff 0xFFFFFFFF");
+        assert_eq!(
+            bitset32_formatted,
+            "BitSet32(0xffffffff) 11111111111111111111111111111111 ffffffff FFFFFFFF 0b11111111111111111111111111111111 0xffffffff 0xFFFFFFFF"
+        );
 
         let bitset64_formatted = format!(
             "{s:?} {s:b} {s:x} {s:X} {s:#b} {s:#x} {s:#X}",
             s = BitSet64::ALL
         );
-        assert_eq!(bitset64_formatted, "BitSet64(0xffffffffffffffff) 1111111111111111111111111111111111111111111111111111111111111111 ffffffffffffffff FFFFFFFFFFFFFFFF 0b1111111111111111111111111111111111111111111111111111111111111111 0xffffffffffffffff 0xFFFFFFFFFFFFFFFF");
+        assert_eq!(
+            bitset64_formatted,
+            "BitSet64(0xffffffffffffffff) 1111111111111111111111111111111111111111111111111111111111111111 ffffffffffffffff FFFFFFFFFFFFFFFF 0b1111111111111111111111111111111111111111111111111111111111111111 0xffffffffffffffff 0xFFFFFFFFFFFFFFFF"
+        );
 
         let bitset128_formatted = format!(
             "{s:?} {s:b} {s:x} {s:X} {s:#b} {s:#x} {s:#X}",
             s = BitSet128::ALL
         );
-        assert_eq!(bitset128_formatted, "BitSet128(0xffffffffffffffffffffffffffffffff) 11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111 ffffffffffffffffffffffffffffffff FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF 0b11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111 0xffffffffffffffffffffffffffffffff 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF");
+        assert_eq!(
+            bitset128_formatted,
+            "BitSet128(0xffffffffffffffffffffffffffffffff) 11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111 ffffffffffffffffffffffffffffffff FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF 0b11111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111111 0xffffffffffffffffffffffffffffffff 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF"
+        );
     }
 }

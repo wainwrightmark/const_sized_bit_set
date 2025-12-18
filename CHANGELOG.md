@@ -21,6 +21,7 @@ Possible header types:
 ### Features
 - Added `BitMap64`
 - impl `BitSetShiftable` for `BitSetArray`
+- Added `first_after` and `first_before`
 
 ## v0.3.0 (2024-04-12)
 
