@@ -1,5 +1,35 @@
-use const_sized_bit_set::*;
+use const_sized_bit_set::{bit_set_trait::BitSetTrait, *};
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
+
+pub fn subset_iter_benchmark(c: &mut Criterion) {
+    let mut group = c.benchmark_group("subset_iter");
+
+    fn subsets_iter_func<const W: usize>(initial_set: BitSetArray<W>, subset_size: u32) -> u32 {
+        initial_set
+            .iter_subsets(subset_size)
+            .map(|x| x.count())
+            .sum()
+    }
+
+    const INITIAL_SET: BitSetArray<4> = {
+        let mut arr = BitSetArray::EMPTY;
+        let mut x = 0u32;
+        while x <= 256 {
+            arr.insert_const(x);
+            x += 17;
+        }
+
+        arr
+    };
+
+    group.bench_with_input(BenchmarkId::from_parameter(5), &5, |b, &subset_size| {
+        b.iter(|| subsets_iter_func(INITIAL_SET, subset_size));
+    });
+    
+    group.bench_with_input(BenchmarkId::from_parameter(7), &7, |b, &subset_size| {
+        b.iter(|| subsets_iter_func(INITIAL_SET, subset_size));
+    });
+}
 
 pub fn from_fn_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("from_fn");
@@ -155,6 +185,7 @@ pub fn nth_benchmark(c: &mut Criterion) {
 
 criterion_group!(
     benches,
+    subset_iter_benchmark,
     sum_with_fold_all_back_benchmark,
     sum_with_fold_benchmark,
     nth_benchmark,
@@ -164,5 +195,6 @@ criterion_group!(
 );
 criterion_main!(benches);
 
-const HALF_EMPTY_SET: BitSetArray<1> =
-    BitSetArray::from_inner_const([0b101010101010101010101010101010101010101010101010101010101010101]);
+const HALF_EMPTY_SET: BitSetArray<1> = BitSetArray::from_inner_const([
+    0b101010101010101010101010101010101010101010101010101010101010101,
+]);
