@@ -1,4 +1,4 @@
-use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, SetElement};
+use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, BitSetArray, SetElement};
 
 //todo add tiles_before and nth
 
@@ -24,7 +24,7 @@ pub trait BitSetTrait:
     #[doc(alias = "count")]
     fn len(&self) -> u32;
 
-    fn inner(self) -> Self::Inner;
+    fn into_inner(self) -> Self::Inner;
     fn from_inner(inner: Self::Inner) -> Self;
 
     fn from_first_n(n: u32) -> Self;
@@ -216,112 +216,115 @@ pub trait BitSetTrait:
     }
 }
 
+macro_rules! impl_bit_set_trait_methods {
+    () => {
+        fn len(&self) -> u32 {
+            self.len_const()
+        }
+
+        fn into_inner(self) -> Self::Inner {
+            self.into_inner_const()
+        }
+
+        fn from_inner(inner: Self::Inner) -> Self {
+            Self::from_inner_const(inner)
+        }
+
+        fn from_first_n(n: u32) -> Self {
+            Self::from_first_n_const(n)
+        }
+
+        fn contains(&self, element: SetElement) -> bool {
+            self.contains_const(element)
+        }
+
+        fn first(&self) -> Option<SetElement> {
+            self.first_const()
+        }
+
+        fn last(&self) -> Option<SetElement> {
+            self.last_const()
+        }
+
+        fn pop(&mut self) -> Option<SetElement> {
+            self.pop_const()
+        }
+
+        fn pop_last(&mut self) -> Option<SetElement> {
+            self.pop_last_const()
+        }
+
+        fn insert(&mut self, element: SetElement) -> bool {
+            self.insert_const(element)
+        }
+
+        fn remove(&mut self, element: SetElement) -> bool {
+            self.remove_const(element)
+        }
+
+        fn swap_bits(&mut self, i: u32, j: u32) {
+            self.swap_bits_const(i, j);
+        }
+
+        fn is_subset(&self, rhs: &Self) -> bool {
+            self.is_subset_const(rhs)
+        }
+
+        fn overlaps(&self, rhs: &Self) -> bool {
+            self.overlaps_const(rhs)
+        }
+
+        fn intersect_with(&mut self, rhs: &Self) {
+            self.intersect_with_const(rhs);
+        }
+
+        fn union_with(&mut self, rhs: &Self) {
+            self.union_with_const(rhs)
+        }
+
+        fn except_with(&mut self, rhs: &Self) {
+            self.except_with_const(rhs)
+        }
+
+        fn symmetric_difference_with(&mut self, rhs: &Self) {
+            self.symmetric_difference_with_const(rhs);
+        }
+
+        fn negate(&mut self) {
+            self.negate_const();
+        }
+
+        fn nth(&self, n: u32) -> Option<SetElement> {
+            self.nth_const(n)
+        }
+
+        fn count_lesser_elements(&self, element: SetElement) -> u32 {
+            self.count_lesser_elements_const(element)
+        }
+
+        fn count_greater_elements(&self, element: SetElement) -> u32 {
+            self.count_greater_elements_const(element)
+        }
+
+        fn smallest_element_greater_than(&self, index: SetElement) -> Option<SetElement> {
+            self.smallest_element_greater_than_const(index)
+        }
+
+        fn largest_element_less_than(&self, index: SetElement) -> Option<SetElement> {
+            self.largest_element_less_than_const(index)
+        }
+    };
+}
+
 macro_rules! impl_bit_set_trait {
     ($name:ident, $inner: ty) => {
         impl BitSetTrait for $name {
             type Inner = $inner;
-
             const EMPTY: Self = Self::EMPTY;
-
             const ALL: Self = Self::ALL;
-
             const MAX_COUNT: u32 = Self::MAX_COUNT;
 
-            fn len(&self) -> u32 {
-                self.len_const()
-            }
-
-            fn inner(self) -> Self::Inner {
-                self.inner_const()
-            }
-
-            fn from_inner(inner: Self::Inner) -> Self {
-                Self::from_inner_const(inner)
-            }
-
-            fn from_first_n(n: u32) -> Self {
-                Self::from_first_n_const(n)
-            }
-
-            fn contains(&self, element: SetElement) -> bool {
-                self.contains_const(element)
-            }
-
-            fn first(&self) -> Option<SetElement> {
-                self.first_const()
-            }
-
-            fn last(&self) -> Option<SetElement> {
-                self.last_const()
-            }
-
-            fn pop(&mut self) -> Option<SetElement> {
-                self.pop_const()
-            }
-
-            fn pop_last(&mut self) -> Option<SetElement> {
-                self.pop_last_const()
-            }
-
-            fn insert(&mut self, element: SetElement) -> bool {
-                self.insert_const(element)
-            }
-
-            fn remove(&mut self, element: SetElement) -> bool {
-                self.remove_const(element)
-            }
-
-            fn swap_bits(&mut self, i: u32, j: u32) {
-                self.swap_bits_const(i, j);
-            }
-
-            fn is_subset(&self, rhs: &Self) -> bool {
-                self.is_subset_const(rhs)
-            }
-
-            fn overlaps(&self, rhs: &Self) -> bool {
-                self.overlaps_const(rhs)
-            }
-
-            fn intersect_with(&mut self, rhs: &Self) {
-                self.intersect_with_const(rhs);
-            }
-
-            fn union_with(&mut self, rhs: &Self) {
-                self.union_with_const(rhs)
-            }
-
-            fn except_with(&mut self, rhs: &Self) {
-                self.except_with_const(rhs)
-            }
-
-            fn symmetric_difference_with(&mut self, rhs: &Self) {
-                self.symmetric_difference_with_const(rhs);
-            }
-
-            fn negate(&mut self) {
-                self.negate_const();
-            }
-
-            fn nth(&self, n: u32) -> Option<SetElement> {
-                self.nth_const(n)
-            }
-
-            fn count_lesser_elements(&self, element: SetElement) -> u32 {
-                self.count_lesser_elements_const(element)
-            }
-            
-            fn count_greater_elements(&self, element: SetElement) -> u32 {
-                self.count_greater_elements_const(element)
-            }            
-
-            fn smallest_element_greater_than(&self, index: SetElement) -> Option<SetElement> {
-                self.smallest_element_greater_than_const(index)
-            }
-
-            fn largest_element_less_than(&self, index: SetElement) -> Option<SetElement> {
-                self.largest_element_less_than_const(index)
-            }
+            impl_bit_set_trait_methods!();
         }
     };
 }
@@ -331,3 +334,12 @@ impl_bit_set_trait!(BitSet16, u16);
 impl_bit_set_trait!(BitSet32, u32);
 impl_bit_set_trait!(BitSet64, u64);
 impl_bit_set_trait!(BitSet128, u128);
+
+
+impl<const WORDS: usize> BitSetTrait for BitSetArray<WORDS>{
+    type Inner = [u64; WORDS];
+    const EMPTY: Self = Self::EMPTY;
+    const ALL: Self = Self::ALL;
+    const MAX_COUNT: u32 = Self::MAX_COUNT;
+    impl_bit_set_trait_methods!();
+}

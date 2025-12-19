@@ -28,27 +28,27 @@ macro_rules! impl_bit_set_shiftable {
     ($name:ident) => {
         impl BitSetShiftable for $name {
             fn t_zeros(&self) -> u32 {
-                self.inner().trailing_zeros()
+                self.into_inner_const().trailing_zeros()
             }
 
             fn t_ones(&self) -> u32 {
-                self.inner().trailing_ones()
+                self.into_inner_const().trailing_ones()
             }
 
             fn l_zeros(&self) -> u32 {
-                self.inner().leading_zeros()
+                self.into_inner_const().leading_zeros()
             }
 
             fn l_ones(&self) -> u32 {
-                self.inner().leading_ones()
+                self.into_inner_const().leading_ones()
             }
 
             fn shift_right(&mut self, n: SetElement) {
-                *self = Self::from_inner(self.inner() >> n)
+                *self = Self::from_inner(self.into_inner_const() >> n)
             }
 
             fn shift_left(&mut self, n: SetElement) {
-                *self = Self::from_inner(self.inner() << n)
+                *self = Self::from_inner(self.into_inner_const() << n)
             }
         }
     };

@@ -27,7 +27,7 @@ macro_rules! define_bit_set_n {
             /// The inner value of the set
             #[must_use]
             #[inline]
-            pub const fn inner_const(&self) -> $inner {
+            pub const fn into_inner_const(&self) -> $inner {
                 self.0
             }
 
@@ -280,7 +280,7 @@ macro_rules! define_bit_set_n {
             #[must_use]
             #[inline]
             pub const fn smallest_element_greater_than_const(&self, index: SetElement) -> Option<SetElement> {
-                let Some(inner) = self.inner_const().checked_shr(index.wrapping_add(1)) else {
+                let Some(inner) = self.into_inner_const().checked_shr(index.wrapping_add(1)) else {
                     return None;
                 };
                 if inner == 0 {
@@ -297,7 +297,7 @@ macro_rules! define_bit_set_n {
             #[inline]
             pub const fn largest_element_less_than_const(&self, index: SetElement) -> Option<SetElement> {
                 let Some(inner) = self
-                    .inner_const()
+                    .into_inner_const()
                     .checked_shl(Self::MAX_COUNT.wrapping_sub(index))
                 else {
                     return None;
@@ -434,11 +434,11 @@ mod tests {
         assert_eq!(BitSet16::from_inner(0b1101).len(), 3);
 
         assert_eq!(
-            BitSet16::from_inner(0b1101).with_inserted(1).inner(),
+            BitSet16::from_inner(0b1101).with_inserted(1).into_inner(),
             0b1111
         );
 
-        assert_eq!(BitSet16::from_inner(0b1101).inner(), 0b1101);
+        assert_eq!(BitSet16::from_inner(0b1101).into_inner(), 0b1101);
 
         assert_eq!(BitSet16::from_fn(|x| x == 2), BitSet16::from_inner(0b0100));
 

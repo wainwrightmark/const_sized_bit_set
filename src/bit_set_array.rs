@@ -51,7 +51,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     pub const EMPTY: Self = { Self([0; WORDS]) };
 
     /// The set where all tiles are present
-    pub const ALL: Self = { Self::EMPTY.negate_const() };
+    pub const ALL: Self = { Self([u64::MAX; WORDS]) };
 
     pub const LAST_WORD: usize = WORDS - 1;
 
@@ -72,7 +72,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
 
     #[must_use]
     #[inline]
-    pub const fn into_inner(self) -> [u64; WORDS] {
+    pub const fn into_inner_const(self) -> [u64; WORDS] {
         self.0
     }
 
@@ -120,7 +120,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
             inner[i] = u64::MAX;
             i += 1;
         }
-        inner[i] = BitSet64::from_first_n_const(n % u64::BITS).inner_const();
+        inner[i] = BitSet64::from_first_n_const(n % u64::BITS).into_inner_const();
 
         Self(inner)
     }
@@ -247,10 +247,9 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
         (word >> shift) & 1 == 1
     }
 
-    #[doc(alias = "len")]
     #[must_use]
     #[inline]
-    pub const fn count(&self) -> u32 {
+    pub const fn len_const(&self) -> u32 {
         let mut count: u32 = 0;
         let mut word = 0;
         while word < WORDS {
@@ -277,7 +276,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
 
         total
     }
-    
+
     #[must_use]
     #[inline]
     pub const fn count_greater_elements_const(&self, element: crate::SetElement) -> u32 {
@@ -295,85 +294,71 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
         total
     }
 
-    #[must_use]
     #[inline]
-    pub const fn intersect_const(&self, rhs: &Self) -> Self {
-        let mut arr = self.0;
+    pub const fn intersect_with_const(&mut self, rhs: &Self) {
         let mut word = 0;
         while word < WORDS {
             let r = rhs.0[word];
-            arr[word] &= r;
+            self.0[word] &= r;
             word += 1;
         }
-
-        Self(arr)
     }
 
-    #[must_use]
     #[inline]
-    pub const fn union_const(&self, rhs: &Self) -> Self {
-        let mut arr = self.0;
+    pub const fn union_with_const(&mut self, rhs: &Self) {
         let mut word = 0;
         while word < WORDS {
             let r = rhs.0[word];
-            arr[word] |= r;
+            self.0[word] |= r;
             word += 1;
         }
-
-        Self(arr)
     }
 
-    #[must_use]
     #[inline]
-    pub const fn except_const(&self, rhs: &Self) -> Self {
-        let mut inner = self.0;
+    pub const fn except_with_const(&mut self, rhs: &Self) {
         let mut i = 0;
         while i < WORDS {
-            inner[i] &= !rhs.0[i];
+            self.0[i] &= !rhs.0[i];
             i += 1;
         }
-
-        Self(inner)
     }
 
-    #[must_use]
     #[inline]
     pub const fn is_subset_const(&self, rhs: &Self) -> bool {
-        self.intersect_const(rhs).eq(self)
+        let mut index = 0;
+        while index < WORDS {
+            if !BitSet64::from_inner_const(self.0[index])
+                .is_subset_const(&BitSet64::from_inner_const(rhs.0[index]))
+            {
+                return false;
+            }
+            index += 1;
+        }
+        true
     }
-
-    #[must_use]
     #[inline]
     pub const fn is_superset(&self, rhs: &Self) -> bool {
         rhs.is_subset_const(self)
     }
 
     /// Returns a new set containing all elements which belong to one set but not both
-    #[must_use]
     #[inline]
-    pub const fn symmetric_difference_const(&self, rhs: &Self) -> Self {
-        let mut arr = self.0;
+    pub const fn symmetric_difference_with_const(&mut self, rhs: &Self) {
         let mut word = 0;
         while word < WORDS {
             let r = rhs.0[word];
-            arr[word] ^= r;
+            self.0[word] ^= r;
             word += 1;
         }
-
-        Self(arr)
     }
 
-    #[must_use]
     #[inline]
-    pub const fn negate_const(&self) -> Self {
-        let mut arr = [0; WORDS];
+    pub const fn negate_const(&mut self) {
         let mut word = 0;
         while word < WORDS {
-            arr[word] = !self.0[word];
+            self.0[word] = !self.0[word];
             word += 1;
         }
-
-        Self(arr)
     }
 
     /// The first (minimum) element in this set
@@ -498,7 +483,10 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     /// Will return the same regardless of whether `element` is present
     #[must_use]
     #[inline]
-    pub const fn smallest_element_greater_than_const(&self, index: SetElement) -> Option<SetElement> {
+    pub const fn smallest_element_greater_than_const(
+        &self,
+        index: SetElement,
+    ) -> Option<SetElement> {
         let mut word = (index / u64::BITS) as usize;
         let e = index % u64::BITS;
 
@@ -506,7 +494,9 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
             return None;
         }
 
-        if let Some(x) = BitSet64::from_inner_const(self.0[word]).smallest_element_greater_than_const(e) {
+        if let Some(x) =
+            BitSet64::from_inner_const(self.0[word]).smallest_element_greater_than_const(e)
+        {
             return Some(x + (word as u32 * u64::BITS));
         }
         word += 1;
@@ -535,7 +525,8 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
             return self.last_const();
         }
 
-        if let Some(x) = BitSet64::from_inner_const(self.0[word]).largest_element_less_than_const(e) {
+        if let Some(x) = BitSet64::from_inner_const(self.0[word]).largest_element_less_than_const(e)
+        {
             return Some(x + (word as u32 * u64::BITS));
         }
 
@@ -622,7 +613,7 @@ pub struct BitSetIter<const WORDS: usize> {
 
 impl<const WORDS: usize> ExactSizeIterator for BitSetIter<WORDS> {
     fn len(&self) -> usize {
-        self.inner.count() as usize
+        self.inner.len_const() as usize
     }
 }
 impl<const WORDS: usize> FusedIterator for BitSetIter<WORDS> {}
@@ -868,112 +859,6 @@ impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
     }
 }
 
-impl<const WORDS: usize> crate::bit_set_trait::BitSetTrait for BitSetArray<WORDS> {
-    type Inner = [u64; WORDS];
-
-    const EMPTY: Self = Self([0u64; WORDS]);
-
-    const ALL: Self = Self([u64::MAX; WORDS]);
-
-    const MAX_COUNT: u32 = (Self::WORDS_U32 * u64::BITS);
-
-    fn len(&self) -> u32 {
-        self.count()
-    }
-
-    fn inner(self) -> Self::Inner {
-        self.0
-    }
-
-    fn from_inner(inner: Self::Inner) -> Self {
-        Self::from_inner_const(inner)
-    }
-
-    fn from_first_n(n: u32) -> Self {
-        Self::from_first_n_const(n)
-    }
-
-    fn contains(&self, element: crate::SetElement) -> bool {
-        self.contains_const(element)
-    }
-
-    fn first(&self) -> Option<crate::SetElement> {
-        self.first_const()
-    }
-
-    fn last(&self) -> Option<crate::SetElement> {
-        self.last_const()
-    }
-
-    fn pop(&mut self) -> Option<crate::SetElement> {
-        self.pop_const()
-    }
-
-    fn pop_last(&mut self) -> Option<crate::SetElement> {
-        self.pop_last_const()
-    }
-
-    fn insert(&mut self, element: crate::SetElement) -> bool {
-        self.insert_const(element)
-    }
-
-    fn remove(&mut self, element: crate::SetElement) -> bool {
-        self.remove_const(element)
-    }
-
-    fn swap_bits(&mut self, i: u32, j: u32) {
-        self.swap_bits_const(i, j);
-    }
-
-    fn is_subset(&self, rhs: &Self) -> bool {
-        self.is_subset_const(rhs)
-    }
-
-    fn overlaps(&self, rhs: &Self) -> bool {
-        self.overlaps_const(rhs)
-    }
-
-    fn intersect_with(&mut self, rhs: &Self) {
-        *self = self.intersect_const(rhs)
-    }
-
-    fn union_with(&mut self, rhs: &Self) {
-        *self = self.union_const(rhs)
-    }
-
-    fn except_with(&mut self, rhs: &Self) {
-        *self = self.except_const(rhs)
-    }
-
-    fn symmetric_difference_with(&mut self, rhs: &Self) {
-        *self = self.symmetric_difference_const(rhs)
-    }
-
-    fn negate(&mut self) {
-        *self = Self::negate_const(&self)
-    }
-
-    fn nth(&self, n: u32) -> Option<crate::SetElement> {
-        self.nth_const(n)
-    }
-
-    fn count_lesser_elements(&self, element: crate::SetElement) -> u32 {
-        self.count_lesser_elements_const(element)
-    }
-    
-    fn count_greater_elements(&self, element: crate::SetElement) -> u32 {
-        self.count_greater_elements_const(element)
-    }
-
-    fn smallest_element_greater_than(&self, index: SetElement) -> Option<SetElement> {
-        self.smallest_element_greater_than_const(index)
-    }
-
-    fn largest_element_less_than(&self, index: SetElement) -> Option<SetElement> {
-        self.largest_element_less_than_const(index)
-    }
-}
-
 impl<const WORDS: usize> BitSetShiftable for BitSetArray<WORDS> {
     fn t_zeros(&self) -> u32 {
         let mut total = 0;
@@ -1142,7 +1027,7 @@ pub mod tests {
 
         let set = BitSetArray::<4>::from_iter(expected.iter().copied());
 
-        assert_eq!(52, set.count());
+        assert_eq!(52, set.len_const());
 
         let iter = set.into_iter();
         assert_eq!(iter.len(), 52);
@@ -1171,7 +1056,7 @@ pub mod tests {
     #[test]
     pub fn from_inner_4() {
         let evens = BitSetArray::<4>::from_fn(|x| x % 2 == 0);
-        let inner = evens.into_inner();
+        let inner = evens.into_inner_const();
 
         assert_eq!(inner, [6_148_914_691_236_517_205; 4]);
         let again = BitSetArray::from_inner(inner);
@@ -1560,7 +1445,7 @@ pub mod tests {
     pub fn from_fn_1() {
         let evens = BitSetArray::<1>::from_fn(|x| x % 2 == 0);
 
-        assert_eq!(32, evens.count());
+        assert_eq!(32, evens.len_const());
         let iter = evens.into_iter();
         assert_eq!(iter.len(), 32);
 
@@ -1576,7 +1461,7 @@ pub mod tests {
 
         let set = BitSetArray::<1>::from_iter(expected.iter().copied());
 
-        assert_eq!(13, set.count());
+        assert_eq!(13, set.len_const());
 
         let iter = set.into_iter();
         assert_eq!(iter.len(), 13);
@@ -1593,7 +1478,7 @@ pub mod tests {
 
         let set = BitSetArray::<1>::from_iter(expected.iter().copied());
 
-        assert_eq!(13, set.count());
+        assert_eq!(13, set.len_const());
 
         let iter = set.into_iter();
         assert_eq!(iter.len(), 13);
@@ -1622,7 +1507,7 @@ pub mod tests {
     #[test]
     pub fn from_inner_1() {
         let evens = BitSetArray::<1>::from_fn(|x| x % 2 == 0);
-        let inner = evens.into_inner();
+        let inner = evens.into_inner_const();
 
         assert_eq!(inner, [6_148_914_691_236_517_205; 1]);
         let again = BitSetArray::from_inner(inner);
@@ -1878,7 +1763,7 @@ pub mod tests {
 
         for size in 0u32..=5 {
             let iter = set.iter_subsets(size);
-            let expected_len = n_choose_k(set.count(), size);
+            let expected_len = n_choose_k(set.len_const(), size);
             let results: Vec<_> = iter.collect();
 
             assert_eq!(
@@ -1894,7 +1779,7 @@ pub mod tests {
             );
 
             for r in &results {
-                assert_eq!(r.count(), size, "Result should have the correct size");
+                assert_eq!(r.len_const(), size, "Result should have the correct size");
                 assert!(r.is_subset(&set), "Result should be a subset of the set");
             }
 
@@ -1916,7 +1801,7 @@ pub mod tests {
 
         assert_eq!(65, set.len());
         assert_eq!(set.last(), Some(64));
-        assert_eq!(set.inner(), [u64::MAX, 1, 0, 0,]);
+        assert_eq!(set.into_inner(), [u64::MAX, 1, 0, 0,]);
 
         assert_eq!(BitSetArray::<2>::from_first_n_const(128), BitSetArray::ALL)
     }
@@ -1930,7 +1815,7 @@ pub mod tests {
         set.swap_bits(8, 9);
 
         assert_eq!(
-            set.inner(),
+            set.into_inner(),
             [
                 0b1000100010001000100010001000100010001000100010001001000000001,
                 0x1111111111111113,
@@ -1963,7 +1848,7 @@ pub mod tests {
 
         let expected = BitSetArray::<2>::from_fn(|x| x % 3 == 0 && x % 5 != 0);
 
-        assert_eq!(actual.inner(), expected.inner())
+        assert_eq!(actual.into_inner(), expected.into_inner())
     }
 
     #[test]
@@ -1996,14 +1881,14 @@ pub mod tests {
             assert_eq!(actual, expected)
         }
     }
-    
+
     #[test]
     fn test_count_greater_elements() {
         let mod20_is0 = BitSetArray::<2>::from_fn(|x| x % 20 == 0);
 
         for x in 0..128 {
             let actual = mod20_is0.count_greater_elements(x);
-            let expected = 6 -( x / 20);
+            let expected = 6 - (x / 20);
             assert_eq!(actual, expected, "x = {x}")
         }
     }
