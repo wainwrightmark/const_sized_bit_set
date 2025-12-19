@@ -4,17 +4,17 @@ use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_ma
 pub fn subset_iter_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("subset_iter");
 
-    fn subsets_iter_func(initial_set: BitSetArray<4>, subset_size: u32) -> u32 {
+    fn bitset_array_subsets_iter_func(initial_set: BitSetArray<4>, subset_size: u32) -> u32 {
         initial_set
             .iter_subsets(subset_size)
             .map(|x| x.count())
             .sum()
     }
 
-    const INITIAL_SET: BitSetArray<4> = {
+    const INITIAL_BIT_SET_ARRAY: BitSetArray<4> = {
         let mut arr = BitSetArray::EMPTY;
         let mut x = 0u32;
-        while x <= 256 {
+        while x < 256 {
             arr.insert_const(x);
             x += 17;
         }
@@ -23,11 +23,37 @@ pub fn subset_iter_benchmark(c: &mut Criterion) {
     };
 
     group.bench_with_input(BenchmarkId::from_parameter(5), &5, |b, &subset_size| {
-        b.iter(|| subsets_iter_func(INITIAL_SET, subset_size));
+        b.iter(|| bitset_array_subsets_iter_func(INITIAL_BIT_SET_ARRAY, subset_size));
     });
 
     group.bench_with_input(BenchmarkId::from_parameter(7), &7, |b, &subset_size| {
-        b.iter(|| subsets_iter_func(INITIAL_SET, subset_size));
+        b.iter(|| bitset_array_subsets_iter_func(INITIAL_BIT_SET_ARRAY, subset_size));
+    });
+
+    const INITIAL_BIT_SET64: BitSet64 = {
+        let mut arr = BitSet64::EMPTY;
+        let mut x = 0u32;
+        while x < 64 {
+            arr.insert_const(x);
+            x += 7;
+        }
+
+        arr
+    };
+
+    fn bitset64_subsets_iter_func(initial_set: BitSet64, subset_size: u32) -> u32 {
+        initial_set
+            .iter_subsets(subset_size)
+            .map(|x| x.len_const())
+            .sum()
+    }
+
+    group.bench_with_input(BenchmarkId::from_parameter("bs64 5"), &5, |b, &subset_size| {
+        b.iter(|| bitset64_subsets_iter_func(INITIAL_BIT_SET64, subset_size));
+    });
+    
+    group.bench_with_input(BenchmarkId::from_parameter("bs64 7"), &7, |b, &subset_size| {
+        b.iter(|| bitset64_subsets_iter_func(INITIAL_BIT_SET64, subset_size));
     });
 }
 
