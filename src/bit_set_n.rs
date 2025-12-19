@@ -1,6 +1,6 @@
 use core::fmt::{self, Binary, LowerHex, UpperHex};
 
-use crate::{SetElement, bit_set_iterator::BitSetIterator};
+use crate::SetElement;
 #[cfg(any(test, feature = "serde"))]
 use serde::{Deserialize, Serialize};
 
@@ -14,7 +14,7 @@ macro_rules! define_bit_set_n {
         impl $name {
             pub const EMPTY: Self = Self(0);
             pub const ALL: Self = Self(<$inner>::MAX);
-            pub const MAX_COUNT: SetElement = <$inner>::BITS;
+            pub const CAPACITY: SetElement = <$inner>::BITS;
 
             /// Returns the number of elements in the set
             #[must_use]
@@ -42,7 +42,7 @@ macro_rules! define_bit_set_n {
             #[must_use]
             pub const fn contains_const(&self, element: SetElement) -> bool {
                 debug_assert!(
-                    element < Self::MAX_COUNT,
+                    element < Self::CAPACITY,
                     "Element is too big to be contained in bitset"
                 );
                 (self.0 >> element) & 1 == 1
@@ -67,7 +67,7 @@ macro_rules! define_bit_set_n {
             #[inline]
             pub const fn insert_const(&mut self, element: SetElement) -> bool {
                 debug_assert!(
-                    element < Self::MAX_COUNT,
+                    element < Self::CAPACITY,
                     "Element is too big to insert into bitset"
                 );
 
@@ -82,7 +82,7 @@ macro_rules! define_bit_set_n {
             #[inline]
             pub const fn remove_const(&mut self, element: SetElement) -> bool {
                 debug_assert!(
-                    element < Self::MAX_COUNT,
+                    element < Self::CAPACITY,
                     "Element is too big to remove from bitset"
                 );
                 let mask = 1 << element;
@@ -96,11 +96,11 @@ macro_rules! define_bit_set_n {
             #[inline]
             pub const fn from_first_n_const(n: SetElement) -> Self {
                 debug_assert!(
-                    n <= Self::MAX_COUNT,
+                    n <= Self::CAPACITY,
                     "Too many elements to create bitset from first n"
                 );
 
-                if n == Self::MAX_COUNT {
+                if n == Self::CAPACITY {
                     Self::ALL
                 } else {
                     let inner = !(<$inner>::MAX << n);
@@ -112,11 +112,11 @@ macro_rules! define_bit_set_n {
             #[inline]
             pub const fn swap_bits_const(&mut self, i: SetElement, j: SetElement) {
                 debug_assert!(
-                    i <= Self::MAX_COUNT,
+                    i <= Self::CAPACITY,
                     "Element i is too big to swap in bitset"
                 );
                 debug_assert!(
-                    j <= Self::MAX_COUNT,
+                    j <= Self::CAPACITY,
                     "Element J is too big to swap in bitset"
                 );
 
@@ -185,7 +185,7 @@ macro_rules! define_bit_set_n {
                 if self.0 == 0 {
                     return None;
                 }
-                let element = (Self::MAX_COUNT - 1) - self.0.leading_zeros();
+                let element = (Self::CAPACITY - 1) - self.0.leading_zeros();
                 return Some(element);
             }
 
@@ -213,7 +213,7 @@ macro_rules! define_bit_set_n {
                 if self.0 == 0 {
                     return None;
                 }
-                let element = (Self::MAX_COUNT - 1) - self.0.leading_zeros();
+                let element = (Self::CAPACITY - 1) - self.0.leading_zeros();
 
                 self.0 &= !(1 << element);
                 return Some(element);
@@ -224,14 +224,14 @@ macro_rules! define_bit_set_n {
             #[must_use]
             #[inline]
             pub const fn count_lesser_elements_const(&self, element: SetElement) -> u32 {
-                let shift = Self::MAX_COUNT - element;
+                let shift = Self::CAPACITY - element;
 
                 match self.0.checked_shl(shift) {
                     Some(x) => x.count_ones(),
                     None => 0,
                 }
             }
-            
+
             /// Returns the number of elements less than `element` in the set
             /// Returns the same result regardless of whether `element` is present
             #[must_use]
@@ -259,7 +259,7 @@ macro_rules! define_bit_set_n {
                 let mut shifted_away = 0u32;
                 let mut remaining = self.0;
 
-                let mut chunk_size = Self::MAX_COUNT / 2;
+                let mut chunk_size = Self::CAPACITY / 2;
 
                 //todo test a branchless version of this
                 loop {
@@ -279,7 +279,10 @@ macro_rules! define_bit_set_n {
             /// Will return the same regardless of whether `element` is present
             #[must_use]
             #[inline]
-            pub const fn smallest_element_greater_than_const(&self, index: SetElement) -> Option<SetElement> {
+            pub const fn smallest_element_greater_than_const(
+                &self,
+                index: SetElement,
+            ) -> Option<SetElement> {
                 let Some(inner) = self.into_inner_const().checked_shr(index.wrapping_add(1)) else {
                     return None;
                 };
@@ -295,10 +298,13 @@ macro_rules! define_bit_set_n {
             /// Will return the same regardless of whether `element` is present
             #[must_use]
             #[inline]
-            pub const fn largest_element_less_than_const(&self, index: SetElement) -> Option<SetElement> {
+            pub const fn largest_element_less_than_const(
+                &self,
+                index: SetElement,
+            ) -> Option<SetElement> {
                 let Some(inner) = self
                     .into_inner_const()
-                    .checked_shl(Self::MAX_COUNT.wrapping_sub(index))
+                    .checked_shl(Self::CAPACITY.wrapping_sub(index))
                 else {
                     return None;
                 };
@@ -326,15 +332,7 @@ macro_rules! define_bit_set_n {
             }
         }
 
-        impl IntoIterator for $name {
-            type Item = SetElement;
-
-            type IntoIter = BitSetIterator<Self>;
-
-            fn into_iter(self) -> Self::IntoIter {
-                BitSetIterator(self)
-            }
-        }
+        
     };
 }
 
@@ -402,6 +400,7 @@ impl_binary_and_hex!(BitSet128);
 mod tests {
     use crate::{
         BitSet8, BitSet32, BitSet64, BitSet128, bit_set_n::BitSet16, bit_set_trait::BitSet,
+        finite::FiniteBitSet,
     };
 
     #[test]
@@ -569,7 +568,7 @@ mod tests {
         assert_eq!(BitSet8::ALL.count_lesser_elements_const(7), 7);
         assert_eq!(BitSet8::ALL.count_lesser_elements_const(8), 8);
     }
-    
+
     #[test]
     fn test_count_greater_elements() {
         assert_eq!(BitSet8::EMPTY.count_greater_elements_const(0), 0);
@@ -618,18 +617,14 @@ mod tests {
             assert_eq!(actual, expected)
         }
     }
-    
+
     #[test]
     fn test_smallest_element_greater_than() {
         let set = BitSet8::from_fn(|x| x % 2 == 0);
 
         for e in 0..=8u32 {
-            let expected = if e % 2 == 0 {
-                e + 2
-            } else {
-                e + 1
-            };
-            let expected = if expected >= 8 {None} else {Some(expected)};
+            let expected = if e % 2 == 0 { e + 2 } else { e + 1 };
+            let expected = if expected >= 8 { None } else { Some(expected) };
             let actual = set.smallest_element_greater_than(e);
             assert_eq!(actual, expected, "e = {e}")
         }

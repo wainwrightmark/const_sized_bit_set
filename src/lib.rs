@@ -4,9 +4,10 @@
 #![allow(clippy::double_must_use)]
 pub mod bit_map;
 pub mod bit_set_array;
-pub mod bit_set_iterator;
+pub mod iterator;
 pub mod bit_set_n;
-pub mod bit_set_shiftable;
+pub mod finite;
+pub mod shiftable;
 pub mod bit_set_trait;
 pub mod set_size_n_iter;
 pub mod subset_iter;

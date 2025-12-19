@@ -1,17 +1,13 @@
 use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, BitSetArray, SetElement};
 
+
+
 pub trait BitSet:
-    Clone    
-    + PartialEq
-    + Extend<SetElement>
-    + FromIterator<SetElement>
-    + IntoIterator<Item = SetElement>
+    Clone + PartialEq + Extend<SetElement> + FromIterator<SetElement> + IntoIterator<Item = SetElement>
 {
     type Inner;
 
     const EMPTY: Self;
-    const ALL: Self;
-    const MAX_COUNT: u32;
 
     #[doc(alias = "count")]
     fn len(&self) -> u32;
@@ -20,15 +16,6 @@ pub trait BitSet:
     fn from_inner(inner: Self::Inner) -> Self;
 
     fn from_first_n(n: u32) -> Self;
-
-    fn from_fn<F: FnMut(SetElement) -> bool>(mut f: F) -> Self {
-        let mut result = Self::EMPTY;
-        for x in (0..(Self::MAX_COUNT)).filter(|x| f(*x)) {
-            result.insert(x);
-        }
-
-        result
-    }
 
     fn is_empty(&self) -> bool {
         self == &Self::EMPTY
@@ -130,21 +117,11 @@ pub trait BitSet:
         s
     }
 
-    fn negate(&mut self);
-
-    #[must_use]
-    fn with_negated(&self) -> Self {
-        let mut s = self.clone();
-        s.negate();
-        s
-    }
-
     /// Return the set of minimal members according to a function
     #[must_use]
     fn min_set_by_key<K: Ord>(&self, f: impl Fn(SetElement) -> K) -> Self {
         let mut result_set = Self::EMPTY;
         let mut iter = self.clone().into_iter();
-        
 
         let Some(first) = iter.next() else {
             return result_set;
@@ -208,6 +185,7 @@ pub trait BitSet:
         }
     }
 }
+
 
 macro_rules! impl_bit_set_trait_methods {
     () => {
@@ -283,9 +261,7 @@ macro_rules! impl_bit_set_trait_methods {
             self.symmetric_difference_with_const(rhs);
         }
 
-        fn negate(&mut self) {
-            self.negate_const();
-        }
+        
 
         fn nth(&self, n: u32) -> Option<SetElement> {
             self.nth_const(n)
@@ -314,8 +290,7 @@ macro_rules! impl_bit_set_trait {
         impl BitSet for $name {
             type Inner = $inner;
             const EMPTY: Self = Self::EMPTY;
-            const ALL: Self = Self::ALL;
-            const MAX_COUNT: u32 = Self::MAX_COUNT;
+            
 
             impl_bit_set_trait_methods!();
         }
@@ -331,7 +306,6 @@ impl_bit_set_trait!(BitSet128, u128);
 impl<const WORDS: usize> BitSet for BitSetArray<WORDS> {
     type Inner = [u64; WORDS];
     const EMPTY: Self = Self::EMPTY;
-    const ALL: Self = Self::ALL;
-    const MAX_COUNT: u32 = Self::MAX_COUNT;
+    
     impl_bit_set_trait_methods!();
 }

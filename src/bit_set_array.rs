@@ -1,4 +1,4 @@
-use crate::bit_set_shiftable::BitSetShiftable;
+use crate::shiftable::ShiftableBitSet;
 use crate::subset_iter::SubsetIter;
 use crate::{BitSet64, SetElement};
 use core::fmt::{Debug, Write};
@@ -57,7 +57,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
 
     const WORDS_U32: u32 = WORDS as u32;
 
-    const MAX_COUNT: u32 = Self::WORDS_U32 * u64::BITS;
+    const CAPACITY: u32 = Self::WORDS_U32 * u64::BITS;
 
     #[inline]
     #[must_use]
@@ -105,10 +105,10 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     #[inline]
     pub const fn from_first_n_const(n: SetElement) -> Self {
         debug_assert!(
-            n <= Self::MAX_COUNT,
+            n <= Self::CAPACITY,
             "Too many elements to create bitset from first n"
         );
-        if n == Self::MAX_COUNT {
+        if n == Self::CAPACITY {
             return Self::ALL;
         }
 
@@ -859,7 +859,7 @@ impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
     }
 }
 
-impl<const WORDS: usize> BitSetShiftable for BitSetArray<WORDS> {
+impl<const WORDS: usize> ShiftableBitSet for BitSetArray<WORDS> {
     fn t_zeros(&self) -> u32 {
         let mut total = 0;
         for i in 0..WORDS {
@@ -971,7 +971,8 @@ impl<const WORDS: usize> BitSetShiftable for BitSetArray<WORDS> {
 #[cfg(test)]
 pub mod tests {
     use crate::bit_set_array::BitSetArray;
-    use crate::bit_set_shiftable::BitSetShiftable;
+    use crate::finite::FiniteBitSet;
+    use crate::shiftable::ShiftableBitSet;
     use crate::bit_set_trait::BitSet;
     use std::collections::BTreeSet;
 

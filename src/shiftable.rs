@@ -1,8 +1,6 @@
-use crate::{
-    bit_set_trait::BitSet, BitSet128, BitSet16, BitSet32, BitSet64, BitSet8, SetElement,
-};
+use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, SetElement, bit_set_trait::BitSet};
 
-pub trait BitSetShiftable: BitSet {
+pub trait ShiftableBitSet: BitSet {
     /// Equivalent to `trailing_zeros`
     fn t_zeros(&self) -> u32;
 
@@ -26,7 +24,7 @@ pub trait BitSetShiftable: BitSet {
 
 macro_rules! impl_bit_set_shiftable {
     ($name:ident) => {
-        impl BitSetShiftable for $name {
+        impl ShiftableBitSet for $name {
             fn t_zeros(&self) -> u32 {
                 self.into_inner_const().trailing_zeros()
             }
