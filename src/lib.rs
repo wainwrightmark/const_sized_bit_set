@@ -4,14 +4,23 @@
 #![allow(clippy::double_must_use)]
 pub mod bit_map;
 pub mod bit_set_array;
-pub mod iterator;
 pub mod bit_set_n;
-pub mod finite;
-pub mod shiftable;
 pub mod bit_set_trait;
+pub mod finite;
+pub mod iterator;
 pub mod set_size_n_iter;
+pub mod shiftable;
 pub mod subset_iter;
 
 pub type SetElement = u32;
-pub use bit_set_array::*;
-pub use bit_set_n::*;
+
+use crate::bit_set_array::*;
+use crate::bit_set_n::*;
+
+pub mod prelude {
+    pub use crate::bit_set_array::*;
+    pub use crate::bit_set_n::*;
+    pub use crate::bit_set_trait::BitSet;
+    pub use crate::finite::FiniteBitSet;
+    pub use crate::shiftable::ShiftableBitSet;
+}

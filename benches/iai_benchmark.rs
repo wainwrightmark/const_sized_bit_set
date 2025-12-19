@@ -1,4 +1,4 @@
-use const_sized_bit_set::*;
+use const_sized_bit_set::prelude::*;
 use iai_callgrind::{library_benchmark, library_benchmark_group, main};
 
 use std::hint::black_box;
@@ -13,8 +13,9 @@ const RANDOM_SET: BitSetArray<4> = BitSetArray::from_inner_const([
     0b1110100110001111100101101001101001000110010010001111111011001001,
     0b0101010010001111000001000111000110111011111101010011101010111001,
 ]);
-const HALF_EMPTY_SET: BitSetArray<4> =
-    BitSetArray::from_inner_const([0b101010101010101010101010101010101010101010101010101010101010101; 4]);
+const HALF_EMPTY_SET: BitSetArray<4> = BitSetArray::from_inner_const(
+    [0b101010101010101010101010101010101010101010101010101010101010101; 4],
+);
 
 #[library_benchmark]
 #[bench::full(FULL_SET)]

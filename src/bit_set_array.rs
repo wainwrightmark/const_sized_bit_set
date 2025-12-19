@@ -971,9 +971,9 @@ impl<const WORDS: usize> ShiftableBitSet for BitSetArray<WORDS> {
 #[cfg(test)]
 pub mod tests {
     use crate::bit_set_array::BitSetArray;
+    use crate::bit_set_trait::BitSet;
     use crate::finite::FiniteBitSet;
     use crate::shiftable::ShiftableBitSet;
-    use crate::bit_set_trait::BitSet;
     use std::collections::BTreeSet;
 
     #[test]

@@ -1,4 +1,4 @@
-use const_sized_bit_set::*;
+use const_sized_bit_set::prelude::*;
 use criterion::{BenchmarkId, Criterion, black_box, criterion_group, criterion_main};
 
 pub fn subset_iter_benchmark(c: &mut Criterion) {
