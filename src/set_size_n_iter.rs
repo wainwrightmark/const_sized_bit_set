@@ -11,7 +11,7 @@ impl<T: BitSet + BitSetShiftable> Iterator for SetSizeNIter<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let next_set = self.next_set;
+        let next_set = self.next_set.clone();
 
         let leading_ones = self.next_set.l_ones();
         self.next_set.shift_left(leading_ones);

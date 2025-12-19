@@ -1,14 +1,8 @@
 use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, BitSetArray, SetElement};
 
 pub trait BitSet:
-    core::fmt::Debug
-    + Clone
-    + Copy
+    Clone    
     + PartialEq
-    + Eq
-    + Ord
-    + PartialOrd
-    + Default
     + Extend<SetElement>
     + FromIterator<SetElement>
     + IntoIterator<Item = SetElement>
@@ -36,8 +30,8 @@ pub trait BitSet:
         result
     }
 
-    fn is_empty(self) -> bool {
-        self == Self::EMPTY
+    fn is_empty(&self) -> bool {
+        self == &Self::EMPTY
     }
 
     fn contains(&self, element: SetElement) -> bool;
@@ -63,7 +57,7 @@ pub trait BitSet:
     }
     #[must_use]
     fn with_bit_set(&self, element: SetElement, bit: bool) -> Self {
-        let mut s = *self;
+        let mut s = self.clone();
         s.set_bit(element, bit);
         s
     }
@@ -72,7 +66,7 @@ pub trait BitSet:
 
     #[must_use]
     fn with_inserted(&self, element: SetElement) -> Self {
-        let mut s = *self;
+        let mut s = self.clone();
         s.insert(element);
         s
     }
@@ -81,7 +75,7 @@ pub trait BitSet:
 
     #[must_use]
     fn with_removed(&self, element: SetElement) -> Self {
-        let mut s = *self;
+        let mut s = self.clone();
         s.remove(element);
         s
     }
@@ -90,7 +84,7 @@ pub trait BitSet:
 
     #[must_use]
     fn with_bits_swapped(&self, i: u32, j: u32) -> Self {
-        let mut s = *self;
+        let mut s = self.clone();
         s.swap_bits(i, j);
         s
     }
@@ -105,7 +99,7 @@ pub trait BitSet:
 
     #[must_use]
     fn with_intersect(&self, rhs: &Self) -> Self {
-        let mut s = *self;
+        let mut s = self.clone();
         s.intersect_with(rhs);
         s
     }
@@ -113,7 +107,7 @@ pub trait BitSet:
     fn union_with(&mut self, rhs: &Self);
     #[must_use]
     fn with_union(&self, rhs: &Self) -> Self {
-        let mut s = *self;
+        let mut s = self.clone();
         s.union_with(rhs);
         s
     }
@@ -122,7 +116,7 @@ pub trait BitSet:
 
     #[must_use]
     fn with_except(&self, rhs: &Self) -> Self {
-        let mut s = *self;
+        let mut s = self.clone();
         s.except_with(rhs);
         s
     }
@@ -131,7 +125,7 @@ pub trait BitSet:
 
     #[must_use]
     fn with_symmetric_difference(&self, rhs: &Self) -> Self {
-        let mut s = *self;
+        let mut s = self.clone();
         s.symmetric_difference_with(rhs);
         s
     }
@@ -140,7 +134,7 @@ pub trait BitSet:
 
     #[must_use]
     fn with_negated(&self) -> Self {
-        let mut s = *self;
+        let mut s = self.clone();
         s.negate();
         s
     }
@@ -149,15 +143,16 @@ pub trait BitSet:
     #[must_use]
     fn min_set_by_key<K: Ord>(&self, f: impl Fn(SetElement) -> K) -> Self {
         let mut result_set = Self::EMPTY;
-        let mut s = *self;
+        let mut iter = self.clone().into_iter();
+        
 
-        let Some(first) = s.pop() else {
+        let Some(first) = iter.next() else {
             return result_set;
         };
         let mut min = f(first);
         result_set.insert(first);
 
-        while let Some(next) = s.pop() {
+        while let Some(next) = iter.next() {
             let k = f(next);
             match k.cmp(&min) {
                 core::cmp::Ordering::Less => {
