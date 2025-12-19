@@ -401,7 +401,7 @@ impl_binary_and_hex!(BitSet128);
 #[cfg(test)]
 mod tests {
     use crate::{
-        BitSet8, BitSet32, BitSet64, BitSet128, bit_set_n::BitSet16, bit_set_trait::BitSetTrait,
+        BitSet8, BitSet32, BitSet64, BitSet128, bit_set_n::BitSet16, bit_set_trait::BitSet,
     };
 
     #[test]

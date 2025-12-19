@@ -1,8 +1,6 @@
 use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, BitSetArray, SetElement};
 
-//todo add tiles_before and nth
-
-pub trait BitSetTrait:
+pub trait BitSet:
     core::fmt::Debug
     + Clone
     + Copy
@@ -318,7 +316,7 @@ macro_rules! impl_bit_set_trait_methods {
 
 macro_rules! impl_bit_set_trait {
     ($name:ident, $inner: ty) => {
-        impl BitSetTrait for $name {
+        impl BitSet for $name {
             type Inner = $inner;
             const EMPTY: Self = Self::EMPTY;
             const ALL: Self = Self::ALL;
@@ -335,8 +333,7 @@ impl_bit_set_trait!(BitSet32, u32);
 impl_bit_set_trait!(BitSet64, u64);
 impl_bit_set_trait!(BitSet128, u128);
 
-
-impl<const WORDS: usize> BitSetTrait for BitSetArray<WORDS>{
+impl<const WORDS: usize> BitSet for BitSetArray<WORDS> {
     type Inner = [u64; WORDS];
     const EMPTY: Self = Self::EMPTY;
     const ALL: Self = Self::ALL;

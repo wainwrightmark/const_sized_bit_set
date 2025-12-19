@@ -205,7 +205,7 @@ impl<T: BitSetShiftable> DoubleEndedIterator for BitSetIterator<T> {
 
 #[cfg(test)]
 mod tests {
-    use crate::{bit_set_trait::BitSetTrait, BitSet16, SetElement};
+    use crate::{bit_set_trait::BitSet, BitSet16, SetElement};
 
     #[test]
     fn test_is_sorted() {

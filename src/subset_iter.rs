@@ -1,12 +1,12 @@
-use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, bit_set_trait::BitSetTrait};
+use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, bit_set_trait::BitSet};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct SubsetIter<T: BitSetTrait, const BITS: usize> {
+pub struct SubsetIter<T: BitSet, const BITS: usize> {
     next_set: T,
     superset: T,
 }
 
-impl<T: BitSetTrait, const BITS: usize> SubsetIter<T, BITS> {
+impl<T: BitSet, const BITS: usize> SubsetIter<T, BITS> {
     #[allow(clippy::cast_possible_truncation)]
     pub fn new(superset: &T, subset_size: u32) -> Self {
         let Some(subset_size_minus_one) = subset_size.checked_sub(1) else {
@@ -31,9 +31,9 @@ impl<T: BitSetTrait, const BITS: usize> SubsetIter<T, BITS> {
     }
 }
 
-impl<T: BitSetTrait, const BITS: usize> core::iter::FusedIterator for SubsetIter<T, BITS> {}
+impl<T: BitSet, const BITS: usize> core::iter::FusedIterator for SubsetIter<T, BITS> {}
 
-impl<T: BitSetTrait, const BITS: usize> Iterator for SubsetIter<T, BITS> {
+impl<T: BitSet, const BITS: usize> Iterator for SubsetIter<T, BITS> {
     type Item = T;
 
     #[allow(warnings)]
@@ -112,7 +112,7 @@ impl_iter_subsets!(BitSet128, 128);
 #[cfg(test)]
 mod tests {
 
-    use crate::{BitSet8, bit_set_trait::BitSetTrait};
+    use crate::{BitSet8, bit_set_trait::BitSet};
 
     #[test]
     pub fn test_subsets_size_8() {

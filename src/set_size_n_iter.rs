@@ -1,13 +1,13 @@
-use crate::{bit_set_shiftable::BitSetShiftable, bit_set_trait::BitSetTrait};
+use crate::{bit_set_shiftable::BitSetShiftable, bit_set_trait::BitSet};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct SetSizeNIter<T: BitSetTrait + BitSetShiftable> {
+pub struct SetSizeNIter<T: BitSet + BitSetShiftable> {
     next_set: T,
 }
 
-impl<T: BitSetTrait + BitSetShiftable> core::iter::FusedIterator for SetSizeNIter<T> {}
+impl<T: BitSet + BitSetShiftable> core::iter::FusedIterator for SetSizeNIter<T> {}
 
-impl<T: BitSetTrait + BitSetShiftable> Iterator for SetSizeNIter<T> {
+impl<T: BitSet + BitSetShiftable> Iterator for SetSizeNIter<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -41,7 +41,7 @@ impl<T: BitSetTrait + BitSetShiftable> Iterator for SetSizeNIter<T> {
     }
 }
 
-impl<T: BitSetTrait + BitSetShiftable> SetSizeNIter<T> {
+impl<T: BitSet + BitSetShiftable> SetSizeNIter<T> {
     /// Returns `None` if the count is 0 or the maximum size of the set or greater
     #[must_use]
     pub fn try_new(element_count: u32) -> Option<Self> {
@@ -60,7 +60,7 @@ impl<T: BitSetTrait + BitSetShiftable> SetSizeNIter<T> {
 #[cfg(test)]
 mod tests {
     use super::SetSizeNIter;
-    use crate::{bit_set_trait::BitSetTrait, BitSet8};
+    use crate::{bit_set_trait::BitSet, BitSet8};
     use std::vec;
 
     #[test]

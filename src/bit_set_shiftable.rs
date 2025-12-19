@@ -1,8 +1,8 @@
 use crate::{
-    bit_set_trait::BitSetTrait, BitSet128, BitSet16, BitSet32, BitSet64, BitSet8, SetElement,
+    bit_set_trait::BitSet, BitSet128, BitSet16, BitSet32, BitSet64, BitSet8, SetElement,
 };
 
-pub trait BitSetShiftable: BitSetTrait {
+pub trait BitSetShiftable: BitSet {
     /// Equivalent to `trailing_zeros`
     fn t_zeros(&self) -> u32;
 
