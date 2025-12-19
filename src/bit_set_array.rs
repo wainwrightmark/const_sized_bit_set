@@ -480,11 +480,12 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     /// Will return `None` if no such element exists
     /// Will return the same regardless of whether `element` is present
     #[must_use]
+    #[inline]
     pub const fn first_after_const(&self, index: SetElement) -> Option<SetElement> {
         let mut word = (index / u64::BITS) as usize;
         let e = index % u64::BITS;
 
-        if word >= WORDS{
+        if word >= WORDS {
             return None;
         }
 
@@ -508,11 +509,12 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     /// Will return `None` if no such element exists
     /// Will return the same regardless of whether `element` is present
     #[must_use]
+    #[inline]
     pub const fn first_before_const(&self, index: SetElement) -> Option<SetElement> {
         let mut word = (index / u64::BITS) as usize;
         let e = index % u64::BITS;
 
-        if word >= WORDS{
+        if word >= WORDS {
             return self.last_const();
         }
 
@@ -537,9 +539,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
             }
         }
     }
-}
 
-impl BitSetArray<1> {
     #[must_use]
     pub fn iter_subsets(
         &self,
@@ -551,51 +551,6 @@ impl BitSetArray<1> {
     + Clone
     + 'static {
         SubsetIter::<Self, 64>::new(self, subset_size)
-    }
-}
-
-impl BitSetArray<2> {
-    #[must_use]
-    pub fn iter_subsets(
-        &self,
-        subset_size: u32,
-    ) -> impl FusedIterator<Item = Self>
-    //+ DoubleEndedIterator
-    //+ ExactSizeIterator
-    + Debug
-    + Clone
-    + 'static {
-        SubsetIter::<Self, 128>::new(self, subset_size)
-    }
-}
-
-impl BitSetArray<3> {
-    #[must_use]
-    pub fn iter_subsets(
-        &self,
-        subset_size: u32,
-    ) -> impl FusedIterator<Item = Self>
-    //+ DoubleEndedIterator
-    //+ ExactSizeIterator
-    + Debug
-    + Clone
-    + 'static {
-        SubsetIter::<Self, 192>::new(self, subset_size)
-    }
-}
-
-impl BitSetArray<4> {
-    #[must_use]
-    pub fn iter_subsets(
-        &self,
-        subset_size: u32,
-    ) -> impl FusedIterator<Item = Self>
-    //+ DoubleEndedIterator
-    //+ ExactSizeIterator
-    + Debug
-    + Clone
-    + 'static {
-        SubsetIter::<Self, 256>::new(self, subset_size)
     }
 }
 
@@ -2118,8 +2073,7 @@ pub mod tests {
         assert_eq!(set2, expected);
     }
 
-
-     #[test]
+    #[test]
     fn test_first_before() {
         let set = BitSetArray::<2>::from_fn(|x| x % 2 == 0);
 
@@ -2133,18 +2087,18 @@ pub mod tests {
             assert_eq!(actual, expected)
         }
     }
-    
+
     #[test]
     fn test_first_after() {
         let set = BitSetArray::<2>::from_fn(|x| x % 2 == 0);
 
         for e in 0..=128u32 {
-            let expected = if e % 2 == 0 {
-                e + 2
+            let expected = if e % 2 == 0 { e + 2 } else { e + 1 };
+            let expected = if expected >= 128 {
+                None
             } else {
-                e + 1
+                Some(expected)
             };
-            let expected = if expected >= 128 {None} else {Some(expected)};
             let actual = set.first_after(e);
             assert_eq!(actual, expected, "e = {e}")
         }

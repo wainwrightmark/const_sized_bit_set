@@ -194,6 +194,21 @@ pub trait BitSetTrait:
     /// Will return the same regardless of whether `element` is present
     #[must_use]
     fn first_before(&self, index: SetElement)-> Option<SetElement>;
+
+
+    
+    /// Retains only the elements specified by the predicate.     
+    fn retain<F>(&mut self, mut f: F)
+    where
+        F: FnMut(&SetElement) -> bool,
+    {
+        let  iter = self.clone().into_iter();
+        for x in iter{
+            if f(&x){
+                self.remove(x);
+            }
+        }
+    }
 }
 
 macro_rules! impl_bit_set_trait {

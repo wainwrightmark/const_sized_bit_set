@@ -1,37 +1,20 @@
-use crate::{
-    BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, bit_set_shiftable::BitSetShiftable,
-    bit_set_trait::BitSetTrait,
-};
+use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, bit_set_trait::BitSetTrait};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct SubsetIter<T: BitSetTrait + BitSetShiftable, const BITS: usize> {
+pub struct SubsetIter<T: BitSetTrait, const BITS: usize> {
     next_set: T,
-    // Maps each element index to the element index to the left.
-    // Maps indexes of missing elements and of the leftmost element to `0`
-    mappings: [u8; BITS],
+    superset: T,
 }
 
-impl<T: BitSetTrait + BitSetShiftable, const BITS: usize> SubsetIter<T, BITS> {
+impl<T: BitSetTrait, const BITS: usize> SubsetIter<T, BITS> {
     #[allow(clippy::cast_possible_truncation)]
     pub fn new(superset: &T, subset_size: u32) -> Self {
         let Some(subset_size_minus_one) = subset_size.checked_sub(1) else {
-            let mut mappings =[0; BITS];
-            if let Some(lm) = mappings.last_mut(){
-                *lm = u8::MAX; //special way to mark that we need to return the empty set first
-            }
             return Self {
                 next_set: T::EMPTY,
-                mappings,
+                superset: T::EMPTY,
             };
         };
-        //todo allow zero
-        let mut offsets = [0; BITS];
-        let mut previous_index = 0u8;
-        let mut ss = *superset;
-        while let Some(new_last) = ss.pop_last() {
-            offsets[new_last as usize] = previous_index;
-            previous_index = new_last as u8;
-        }
 
         let next_set = match superset.nth(subset_size_minus_one) {
             Some(nth_element) => superset.with_intersect(&T::from_first_n(nth_element + 1)),
@@ -43,43 +26,34 @@ impl<T: BitSetTrait + BitSetShiftable, const BITS: usize> SubsetIter<T, BITS> {
 
         Self {
             next_set,
-            mappings: offsets,
+            superset: superset.clone(),
         }
     }
 }
 
-impl<T: BitSetTrait + BitSetShiftable, const BITS: usize> core::iter::FusedIterator
-    for SubsetIter<T, BITS>
-{
-}
+impl<T: BitSetTrait, const BITS: usize> core::iter::FusedIterator for SubsetIter<T, BITS> {}
 
-impl<T: BitSetTrait + BitSetShiftable, const BITS: usize> Iterator for SubsetIter<T, BITS> {
+impl<T: BitSetTrait, const BITS: usize> Iterator for SubsetIter<T, BITS> {
     type Item = T;
 
     #[allow(warnings)]
     fn next(&mut self) -> Option<Self::Item> {
         let next_set = self.next_set.clone();
 
-        let Some(left_most_index) = self.next_set.pop_last() else {            
-
-            let mappings_last = self.mappings.last_mut()?;
-            if mappings_last == &u8::MAX{ //special marker for when we need to return the empty set
-                *mappings_last = 0;
-                return Some(Self::Item::EMPTY);    
+        let Some(left_most_index) = self.next_set.pop_last() else {
+            if self.superset.is_empty() {
+                self.superset.insert(0); //just to stop it returning empty again
+                return Some(T::EMPTY);
             }
             return None;
         };
 
-        let mapped_index = self.mappings[left_most_index as usize];
-
-        if mapped_index != 0 {
-            // the fast path - just move the leftmost index one to the left
-
-            self.next_set.insert(mapped_index as u32);
+        if let Some(new_index) = self.superset.first_after(left_most_index) {
+            self.next_set.insert(new_index);
             return Some(next_set);
         }
 
-        let mut previous_index = left_most_index as u8;
+        let mut previous_index = left_most_index;
         let mut count_to_add_back = 1;
 
         loop {
@@ -89,18 +63,21 @@ impl<T: BitSetTrait + BitSetShiftable, const BITS: usize> Iterator for SubsetIte
             };
             count_to_add_back += 1;
 
-            let new_leftmost_mapped = self.mappings[new_leftmost as usize];
+            let new_leftmost_mapped = self.superset.first_after(new_leftmost).unwrap_or_default(); //should always unwrap successfully
+            debug_assert!(new_leftmost_mapped != 0);
 
             if new_leftmost_mapped < previous_index {
                 let mut index_to_add_back = new_leftmost_mapped as u32;
-                for _ in 0..count_to_add_back {
+                self.next_set.insert(index_to_add_back);
+                for _ in 1..count_to_add_back {
+                    index_to_add_back = self.superset.first_after(index_to_add_back).unwrap_or_default();
+                    debug_assert!(index_to_add_back != 0);
                     self.next_set.insert(index_to_add_back);
-                    index_to_add_back = self.mappings[index_to_add_back as usize] as u32;
                 }
 
                 return Some(next_set);
             } else {
-                previous_index = new_leftmost as u8;
+                previous_index = new_leftmost;
             }
         }
 
@@ -299,6 +276,9 @@ mod tests {
     pub fn test_subsets_size_0() {
         let superset = BitSet8::from_inner(0b01010101);
 
-        assert_eq!(superset.iter_subsets(0).collect::<Vec<_>>(), vec![BitSet8::EMPTY]);
+        assert_eq!(
+            superset.iter_subsets(0).collect::<Vec<_>>(),
+            vec![BitSet8::EMPTY]
+        );
     }
 }

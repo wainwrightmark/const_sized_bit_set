@@ -265,6 +265,7 @@ macro_rules! define_bit_set_n {
             /// Will return `None` if no such element exists
             /// Will return the same regardless of whether `element` is present
             #[must_use]
+            #[inline]
             pub const fn first_after_const(&self, index: SetElement) -> Option<SetElement> {
                 let Some(inner) = self.inner_const().checked_shr(index.wrapping_add(1)) else {
                     return None;
@@ -280,6 +281,7 @@ macro_rules! define_bit_set_n {
             /// Will return `None` if no such element exists
             /// Will return the same regardless of whether `element` is present
             #[must_use]
+            #[inline]
             pub const fn first_before_const(&self, index: SetElement) -> Option<SetElement> {
                 let Some(inner) = self
                     .inner_const()
