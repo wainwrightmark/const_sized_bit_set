@@ -231,6 +231,19 @@ macro_rules! define_bit_set_n {
                     None => 0,
                 }
             }
+            
+            /// Returns the number of elements less than `element` in the set
+            /// Returns the same result regardless of whether `element` is present
+            #[must_use]
+            #[inline]
+            pub const fn count_greater_elements_const(&self, element: SetElement) -> u32 {
+                let shift = element + 1;
+
+                match self.0.checked_shr(shift) {
+                    Some(x) => x.count_ones(),
+                    None => 0,
+                }
+            }
 
             /// Returns the n+1th element present in the set, if there are at least n + 1 elements
             /// To return the first element, use n == 0
@@ -266,7 +279,7 @@ macro_rules! define_bit_set_n {
             /// Will return the same regardless of whether `element` is present
             #[must_use]
             #[inline]
-            pub const fn first_after_const(&self, index: SetElement) -> Option<SetElement> {
+            pub const fn smallest_element_greater_than_const(&self, index: SetElement) -> Option<SetElement> {
                 let Some(inner) = self.inner_const().checked_shr(index.wrapping_add(1)) else {
                     return None;
                 };
@@ -282,7 +295,7 @@ macro_rules! define_bit_set_n {
             /// Will return the same regardless of whether `element` is present
             #[must_use]
             #[inline]
-            pub const fn first_before_const(&self, index: SetElement) -> Option<SetElement> {
+            pub const fn largest_element_less_than_const(&self, index: SetElement) -> Option<SetElement> {
                 let Some(inner) = self
                     .inner_const()
                     .checked_shl(Self::MAX_COUNT.wrapping_sub(index))
@@ -556,9 +569,43 @@ mod tests {
         assert_eq!(BitSet8::ALL.count_lesser_elements_const(7), 7);
         assert_eq!(BitSet8::ALL.count_lesser_elements_const(8), 8);
     }
+    
+    #[test]
+    fn test_count_greater_elements() {
+        assert_eq!(BitSet8::EMPTY.count_greater_elements_const(0), 0);
+        assert_eq!(BitSet8::EMPTY.count_greater_elements_const(1), 0);
+        assert_eq!(BitSet8::EMPTY.count_greater_elements_const(7), 0);
+        assert_eq!(BitSet8::EMPTY.count_greater_elements_const(8), 0);
+
+        assert_eq!(
+            BitSet8::from_inner(0b01010101).count_greater_elements_const(0),
+            3
+        );
+        assert_eq!(
+            BitSet8::from_inner(0b01010101).count_greater_elements_const(1),
+            3
+        );
+        assert_eq!(
+            BitSet8::from_inner(0b01010101).count_greater_elements_const(2),
+            2
+        );
+        assert_eq!(
+            BitSet8::from_inner(0b01010101).count_greater_elements_const(3),
+            2
+        );
+        assert_eq!(
+            BitSet8::from_inner(0b01010101).count_greater_elements_const(4),
+            1
+        );
+
+        assert_eq!(BitSet8::ALL.count_greater_elements_const(0), 7);
+        assert_eq!(BitSet8::ALL.count_greater_elements_const(1), 6);
+        assert_eq!(BitSet8::ALL.count_greater_elements_const(7), 0);
+        assert_eq!(BitSet8::ALL.count_greater_elements_const(8), 0);
+    }
 
     #[test]
-    fn test_first_before() {
+    fn test_largest_element_less_than() {
         let set = BitSet8::from_fn(|x| x % 2 == 0);
 
         for e in 0..=8u32 {
@@ -567,13 +614,13 @@ mod tests {
             } else {
                 e.checked_sub(1)
             };
-            let actual = set.first_before(e);
+            let actual = set.largest_element_less_than(e);
             assert_eq!(actual, expected)
         }
     }
     
     #[test]
-    fn test_first_after() {
+    fn test_smallest_element_greater_than() {
         let set = BitSet8::from_fn(|x| x % 2 == 0);
 
         for e in 0..=8u32 {
@@ -583,7 +630,7 @@ mod tests {
                 e + 1
             };
             let expected = if expected >= 8 {None} else {Some(expected)};
-            let actual = set.first_after(e);
+            let actual = set.smallest_element_greater_than(e);
             assert_eq!(actual, expected, "e = {e}")
         }
     }

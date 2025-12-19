@@ -48,7 +48,7 @@ impl<T: BitSetTrait, const BITS: usize> Iterator for SubsetIter<T, BITS> {
             return None;
         };
 
-        if let Some(new_index) = self.superset.first_after(left_most_index) {
+        if let Some(new_index) = self.superset.smallest_element_greater_than(left_most_index) {
             self.next_set.insert(new_index);
             return Some(next_set);
         }
@@ -63,14 +63,14 @@ impl<T: BitSetTrait, const BITS: usize> Iterator for SubsetIter<T, BITS> {
             };
             count_to_add_back += 1;
 
-            let new_leftmost_mapped = self.superset.first_after(new_leftmost).unwrap_or_default(); //should always unwrap successfully
+            let new_leftmost_mapped = self.superset.smallest_element_greater_than(new_leftmost).unwrap_or_default(); //should always unwrap successfully
             debug_assert!(new_leftmost_mapped != 0);
 
             if new_leftmost_mapped < previous_index {
                 let mut index_to_add_back = new_leftmost_mapped as u32;
                 self.next_set.insert(index_to_add_back);
                 for _ in 1..count_to_add_back {
-                    index_to_add_back = self.superset.first_after(index_to_add_back).unwrap_or_default();
+                    index_to_add_back = self.superset.smallest_element_greater_than(index_to_add_back).unwrap_or_default();
                     debug_assert!(index_to_add_back != 0);
                     self.next_set.insert(index_to_add_back);
                 }

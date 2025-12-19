@@ -1,4 +1,4 @@
-use crate::{BitSet128, BitSet16, BitSet32, BitSet64, BitSet8, SetElement};
+use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, SetElement};
 
 //todo add tiles_before and nth
 
@@ -182,29 +182,34 @@ pub trait BitSetTrait:
     #[must_use]
     fn nth(&self, n: u32) -> Option<SetElement>;
 
+    /// Returns the number of elements less than `element` in the set
+    /// Returns the same result regardless of whether `element` is present
     #[must_use]
     fn count_lesser_elements(&self, element: SetElement) -> u32;
+
+    /// Returns the number of elements greater than `element` in the set
+    /// Returns the same result regardless of whether `element` is present
+    #[must_use]
+    fn count_greater_elements(&self, element: SetElement) -> u32;
 
     /// Return the smallest element greater than `index`
     /// Will return the same regardless of whether `element` is present
     #[must_use]
-    fn first_after(&self, index: SetElement)-> Option<SetElement>;
+    fn smallest_element_greater_than(&self, index: SetElement) -> Option<SetElement>;
 
     /// Return the smallest element less than `index`
     /// Will return the same regardless of whether `element` is present
     #[must_use]
-    fn first_before(&self, index: SetElement)-> Option<SetElement>;
+    fn largest_element_less_than(&self, index: SetElement) -> Option<SetElement>;
 
-
-    
     /// Retains only the elements specified by the predicate.     
     fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(&SetElement) -> bool,
     {
-        let  iter = self.clone().into_iter();
-        for x in iter{
-            if f(&x){
+        let iter = self.clone().into_iter();
+        for x in iter {
+            if f(&x) {
                 self.remove(x);
             }
         }
@@ -302,18 +307,20 @@ macro_rules! impl_bit_set_trait {
                 self.nth_const(n)
             }
 
-            /// Returns the number of elements less than `element` in the set
-            /// Returns the same result regardless of whether `element` is present
             fn count_lesser_elements(&self, element: SetElement) -> u32 {
                 self.count_lesser_elements_const(element)
             }
-
-            fn first_after(&self, index: SetElement) -> Option<SetElement> {
-                self.first_after_const(index)
-            }
             
-            fn first_before(&self, index: SetElement) -> Option<SetElement> {
-                self.first_before_const(index)
+            fn count_greater_elements(&self, element: SetElement) -> u32 {
+                self.count_greater_elements_const(element)
+            }            
+
+            fn smallest_element_greater_than(&self, index: SetElement) -> Option<SetElement> {
+                self.smallest_element_greater_than_const(index)
+            }
+
+            fn largest_element_less_than(&self, index: SetElement) -> Option<SetElement> {
+                self.largest_element_less_than_const(index)
             }
         }
     };

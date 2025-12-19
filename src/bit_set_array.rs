@@ -277,6 +277,23 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
 
         total
     }
+    
+    #[must_use]
+    #[inline]
+    pub const fn count_greater_elements_const(&self, element: crate::SetElement) -> u32 {
+        let index = (element / u64::BITS) as usize;
+        let e = element % u64::BITS;
+        let mut total = 0u32;
+
+        let mut i = WORDS - 1;
+        while i > index {
+            total += self.0[i as usize].count_ones();
+            i -= 1;
+        }
+        total += BitSet64::from_inner_const(self.0[index]).count_greater_elements_const(e);
+
+        total
+    }
 
     #[must_use]
     #[inline]
@@ -481,7 +498,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     /// Will return the same regardless of whether `element` is present
     #[must_use]
     #[inline]
-    pub const fn first_after_const(&self, index: SetElement) -> Option<SetElement> {
+    pub const fn smallest_element_greater_than_const(&self, index: SetElement) -> Option<SetElement> {
         let mut word = (index / u64::BITS) as usize;
         let e = index % u64::BITS;
 
@@ -489,7 +506,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
             return None;
         }
 
-        if let Some(x) = BitSet64::from_inner_const(self.0[word]).first_after_const(e) {
+        if let Some(x) = BitSet64::from_inner_const(self.0[word]).smallest_element_greater_than_const(e) {
             return Some(x + (word as u32 * u64::BITS));
         }
         word += 1;
@@ -510,7 +527,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     /// Will return the same regardless of whether `element` is present
     #[must_use]
     #[inline]
-    pub const fn first_before_const(&self, index: SetElement) -> Option<SetElement> {
+    pub const fn largest_element_less_than_const(&self, index: SetElement) -> Option<SetElement> {
         let mut word = (index / u64::BITS) as usize;
         let e = index % u64::BITS;
 
@@ -518,7 +535,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
             return self.last_const();
         }
 
-        if let Some(x) = BitSet64::from_inner_const(self.0[word]).first_before_const(e) {
+        if let Some(x) = BitSet64::from_inner_const(self.0[word]).largest_element_less_than_const(e) {
             return Some(x + (word as u32 * u64::BITS));
         }
 
@@ -943,13 +960,17 @@ impl<const WORDS: usize> crate::bit_set_trait::BitSetTrait for BitSetArray<WORDS
     fn count_lesser_elements(&self, element: crate::SetElement) -> u32 {
         self.count_lesser_elements_const(element)
     }
-
-    fn first_after(&self, index: SetElement) -> Option<SetElement> {
-        self.first_after_const(index)
+    
+    fn count_greater_elements(&self, element: crate::SetElement) -> u32 {
+        self.count_greater_elements_const(element)
     }
 
-    fn first_before(&self, index: SetElement) -> Option<SetElement> {
-        self.first_before_const(index)
+    fn smallest_element_greater_than(&self, index: SetElement) -> Option<SetElement> {
+        self.smallest_element_greater_than_const(index)
+    }
+
+    fn largest_element_less_than(&self, index: SetElement) -> Option<SetElement> {
+        self.largest_element_less_than_const(index)
     }
 }
 
@@ -1975,6 +1996,17 @@ pub mod tests {
             assert_eq!(actual, expected)
         }
     }
+    
+    #[test]
+    fn test_count_greater_elements() {
+        let mod20_is0 = BitSetArray::<2>::from_fn(|x| x % 20 == 0);
+
+        for x in 0..128 {
+            let actual = mod20_is0.count_greater_elements(x);
+            let expected = 6 -( x / 20);
+            assert_eq!(actual, expected, "x = {x}")
+        }
+    }
 
     #[test]
     fn test_trailing_zeros() {
@@ -2074,7 +2106,7 @@ pub mod tests {
     }
 
     #[test]
-    fn test_first_before() {
+    fn test_largest_element_less_than() {
         let set = BitSetArray::<2>::from_fn(|x| x % 2 == 0);
 
         for e in 0..=128u32 {
@@ -2083,13 +2115,13 @@ pub mod tests {
             } else {
                 e.checked_sub(1)
             };
-            let actual = set.first_before(e);
+            let actual = set.largest_element_less_than(e);
             assert_eq!(actual, expected)
         }
     }
 
     #[test]
-    fn test_first_after() {
+    fn test_smallest_element_greater_than() {
         let set = BitSetArray::<2>::from_fn(|x| x % 2 == 0);
 
         for e in 0..=128u32 {
@@ -2099,7 +2131,7 @@ pub mod tests {
             } else {
                 Some(expected)
             };
-            let actual = set.first_after(e);
+            let actual = set.smallest_element_greater_than(e);
             assert_eq!(actual, expected, "e = {e}")
         }
     }
