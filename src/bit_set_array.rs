@@ -361,6 +361,28 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
         }
     }
 
+    #[inline]
+    pub const fn reverse_const(&mut self){
+        let Some(mut backward_word) = WORDS.checked_sub(1) else{
+            return;
+        };
+        let mut forward_word = 0usize;
+
+        while forward_word < backward_word{
+            let new_b = self.0[forward_word].reverse_bits();
+            let new_f = self.0[backward_word].reverse_bits();
+
+            self.0[forward_word] = new_f;
+            self.0[backward_word] = new_b;
+
+            forward_word += 1;
+            backward_word -= 1;
+        }
+        if forward_word == backward_word{
+            self.0[forward_word] = self.0[forward_word].reverse_bits();
+        }
+    }
+
     /// The first (minimum) element in this set
     #[must_use]
     #[inline]
@@ -2020,5 +2042,20 @@ pub mod tests {
             let actual = set.smallest_element_greater_than(e);
             assert_eq!(actual, expected, "e = {e}")
         }
+    }
+
+
+    #[test]
+    fn test_reverse(){
+        let set4 = BitSetArray::<4>::from_fn(|x| x % 2 == 0);
+        let expected_set4 = BitSetArray::<4>::from_fn(|x| x % 2 == 1);
+
+        assert_eq!(set4.with_reversed(), expected_set4);
+        
+        
+        let set5 = BitSetArray::<5>::from_fn(|x| x % 2 == 0);
+        let expected_set5 = BitSetArray::<5>::from_fn(|x| x % 2 == 1);
+
+        assert_eq!(set5.with_reversed(), expected_set5);
     }
 }

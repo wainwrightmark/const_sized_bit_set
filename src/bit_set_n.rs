@@ -61,6 +61,12 @@ macro_rules! define_bit_set_n {
             pub const fn negate_const(&mut self) {
                 self.0 = !self.0
             }
+            
+            
+            #[inline]
+            pub const fn reverse_const(&mut self) {
+                self.0 = self.0.reverse_bits();
+            }
 
             /// Insert an element into the set
             /// Returns whether the element was inserted (it was not already present)
@@ -628,6 +634,14 @@ mod tests {
             let actual = set.smallest_element_greater_than(e);
             assert_eq!(actual, expected, "e = {e}")
         }
+    }
+
+    #[test]
+    fn test_reverse(){
+        let set = BitSet8::from_fn(|x| x % 2 == 0);
+        let expected_set = BitSet8::from_fn(|x| x % 2 == 1);
+
+        assert_eq!(set.with_reversed(), expected_set);
     }
 
     #[test]

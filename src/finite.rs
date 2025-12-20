@@ -10,12 +10,23 @@ pub trait FiniteBitSet: BitSet {
     /// The total number of elements that can fit in this set
     const CAPACITY: u32;
 
+    /// Negate the elements in the set
     fn negate(&mut self);
 
     #[must_use]
     fn with_negated(&self) -> Self {
         let mut s = self.clone();
         s.negate();
+        s
+    }
+
+    /// Reverse the elements of the set
+    fn reverse(&mut self);
+
+    #[must_use]
+    fn with_reversed(&self) -> Self {
+        let mut s = self.clone();
+        s.reverse();
         s
     }
 
@@ -38,6 +49,10 @@ macro_rules! impl_bit_set_finite {
             fn negate(&mut self) {
                 self.negate_const();
             }
+
+            fn reverse(&mut self) {
+                self.reverse_const();
+            }
         }
     };
 }
@@ -54,5 +69,9 @@ impl<const WORDS: usize> FiniteBitSet for BitSetArray<WORDS> {
 
     fn negate(&mut self) {
         self.negate_const();
+    }
+
+    fn reverse(&mut self) {
+        self.reverse_const();
     }
 }
