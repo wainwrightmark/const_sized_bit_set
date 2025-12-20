@@ -1789,9 +1789,9 @@ pub mod tests {
             sorted_results.dedup();
 
             assert_eq!(
-                results.len(),
-                sorted_results.len(),
-                "Results should be free of duplicates"
+                results,
+                sorted_results,
+                "Results should be free of duplicates and sorted"
             );
         }
     }
