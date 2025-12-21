@@ -1005,6 +1005,7 @@ pub mod tests {
     use crate::bit_set_array::BitSetArray;
     use crate::bit_set_trait::BitSet;
     use crate::finite::FiniteBitSet;
+    use crate::n_choose_k;
     use crate::shiftable::ShiftableBitSet;
     use std::collections::BTreeSet;
 
@@ -1777,27 +1778,13 @@ pub mod tests {
         assert_eq!(set.to_string(), "[0, 99, 100]");
     }
 
-    #[must_use]
-    pub const fn n_choose_k(n: u32, k: u32) -> u32 {
-        let mut result = 1;
-        let m = if k <= n - k { k } else { n - k };
-        let mut i = 0;
-        while i < m {
-            result *= n - i;
-            result /= i + 1;
-            i += 1;
-        }
-
-        result
-    }
-
     #[test]
     fn test_iter_subsets() {
         let set = BitSetArray::<1>::from_iter([0u32, 1, 2, 3, 4]);
 
         for size in 0u32..=5 {
             let iter = set.iter_subsets(size);
-            let expected_len = n_choose_k(set.len_const(), size);
+            let expected_len = n_choose_k::subsets_count(&set, size);
             let results: Vec<_> = iter.collect();
 
             assert_eq!(

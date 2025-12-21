@@ -1,13 +1,19 @@
-use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, bit_set_trait::BitSet};
+use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, bit_set_trait::BitSet, n_choose_k};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct SubsetIter<T: BitSet + Clone, const BITS: usize>(Option<(T, T)>);
+pub enum SubsetIter<T: BitSet + Clone, const BITS: usize> {
+    Finished,
+    Unfinished { next_set: T, excluded_set: T },
+}
 
 impl<T: BitSet + Clone, const BITS: usize> SubsetIter<T, BITS> {
     pub fn new(superset: &T, subset_size: u32) -> Self {
         let Some(subset_size_minus_one) = subset_size.checked_sub(1) else {
             //return empty set
-            return Self(Some((T::EMPTY, superset.clone())));
+            return Self::Unfinished {
+                next_set: T::EMPTY,
+                excluded_set: superset.clone(),
+            };
         };
 
         let next_set = match superset.nth(subset_size_minus_one) {
@@ -19,12 +25,15 @@ impl<T: BitSet + Clone, const BITS: usize> SubsetIter<T, BITS> {
 
             None => {
                 //not enough elements in the set - return an empty iterator
-                return Self(None);
+                return Self::Finished;
             }
         };
         let excluded_set = superset.with_except(&next_set);
 
-        Self(Some((next_set, excluded_set)))
+        Self::Unfinished {
+            next_set,
+            excluded_set,
+        }
     }
 }
 
@@ -35,15 +44,21 @@ impl<T: BitSet + Clone, const BITS: usize> Iterator for SubsetIter<T, BITS> {
 
     #[expect(warnings)]
     fn next(&mut self) -> Option<Self::Item> {
-        let (next_set, excluded_set) = self.0.as_mut()?;
+        let Self::Unfinished {
+            next_set,
+            excluded_set,
+        } = self
+        else {
+            return None;
+        };
         let result = next_set.clone();
         let Some(first_index) = next_set.first() else {
-            self.0 = None;
+            *self = Self::Finished;
             return Some(result);
         };
 
         let Some(first_zero_index) = excluded_set.smallest_element_greater_than(first_index) else {
-            self.0 = None;
+            *self = Self::Finished;
             //we are finished
             return Some(result);
         };
@@ -87,8 +102,41 @@ impl<T: BitSet + Clone, const BITS: usize> Iterator for SubsetIter<T, BITS> {
         Self: Sized,
         Self::Item: Ord,
     {
-        let (n, _e) = self.0?;
-        Some(n)
+        let Self::Unfinished {
+            next_set,
+            excluded_set: _,
+        } = self
+        else {
+            return None;
+        };
+        Some(next_set)
+    }
+
+    fn last(self) -> Option<Self::Item>
+    where
+        Self: Sized,
+    {
+        let Self::Unfinished {
+            next_set,
+            excluded_set,
+        } = self
+        else {
+            return None;
+        };
+        let subset_size = next_set.len();
+        let mut superset = next_set;
+        superset.union_with(&excluded_set);
+        let index = n_choose_k::subsets_count(&superset, subset_size).saturating_sub(1);
+        let last_set = n_choose_k::subset_index_to_member(superset, subset_size, index);
+        return Some(last_set);
+    }
+
+    fn max(self) -> Option<Self::Item>
+    where
+        Self: Sized,
+        Self::Item: Ord,
+    {
+        self.last()
     }
 
     //todo last, min, max
@@ -114,7 +162,7 @@ impl_iter_subsets!(BitSet128, 128);
 #[cfg(test)]
 mod tests {
 
-    use crate::{BitSet8, bit_set_trait::BitSet};
+    use crate::{BitSet8, bit_set_trait::BitSet, n_choose_k};
 
     #[test]
     pub fn test_subsets_size_8() {
@@ -145,23 +193,10 @@ mod tests {
         );
     }
 
-    pub const fn n_choose_k(n: u32, k: u32) -> u32 {
-        let mut result = 1;
-        let m = if k <= n - k { k } else { n - k };
-        let mut i = 0;
-        while i < m {
-            result *= n - i;
-            result /= i + 1;
-            i += 1;
-        }
-
-        result
-    }
-
     #[test]
     pub fn fuzz_test() {
         fn test_subsets(actual: &[BitSet8], superset: BitSet8, size: u32) {
-            let expected_count = n_choose_k(superset.len_const(), size);
+            let expected_count = n_choose_k::subsets_count(&superset, size);
 
             assert_eq!(
                 actual.len() as u32,
@@ -295,6 +330,48 @@ mod tests {
         assert_eq!(
             BitSet8::EMPTY.iter_subsets(0).collect::<Vec<_>>(),
             vec![BitSet8::EMPTY]
+        );
+    }
+
+    #[test]
+    pub fn test_last_subset() {
+        assert_eq!(
+            BitSet8::from_inner(0b01010101).iter_subsets(3).max(),
+            Some(BitSet8::from_inner_const(0b01010100))
+        );
+
+        assert_eq!(
+            BitSet8::from_inner(0b01010101)
+                .iter_subsets(3)
+                .skip(4)
+                .max(),
+            None
+        );
+
+        assert_eq!(
+            BitSet8::from_inner(0b01010101).iter_subsets(0).max(),
+            Some(BitSet8::EMPTY)
+        );
+
+        assert_eq!(BitSet8::from_inner(0b01010101).iter_subsets(5).max(), None);
+    }
+
+    #[test]
+    pub fn test_min_subset() {
+        assert_eq!(
+            BitSet8::from_inner(0b01010101)
+                .iter_subsets(3)
+                .skip(2)
+                .min(),
+            Some(BitSet8::from_inner_const(0b1010001))
+        );
+
+        assert_eq!(
+            BitSet8::from_inner(0b01010101)
+                .iter_subsets(3)
+                .skip(4)
+                .min(),
+            None
         );
     }
 }

@@ -13,6 +13,7 @@ pub mod iterator;
 pub mod set_size_n_iter;
 pub mod shiftable;
 pub mod subset_iter;
+pub mod n_choose_k;
 
 pub type SetElement = u32;
 
