@@ -1,13 +1,13 @@
 use crate::{bit_set_trait::BitSet, finite::FiniteBitSet, shiftable::ShiftableBitSet};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct SetSizeNIter<T: BitSet + ShiftableBitSet + FiniteBitSet> {
+pub struct SetSizeNIter<T: BitSet + ShiftableBitSet + FiniteBitSet + Clone> {
     next_set: T,
 }
 
-impl<T: BitSet + ShiftableBitSet + FiniteBitSet> core::iter::FusedIterator for SetSizeNIter<T> {}
+impl<T: BitSet + ShiftableBitSet + FiniteBitSet + Clone> core::iter::FusedIterator for SetSizeNIter<T> {}
 
-impl<T: BitSet + ShiftableBitSet + FiniteBitSet> Iterator for SetSizeNIter<T> {
+impl<T: BitSet + ShiftableBitSet + FiniteBitSet + Clone> Iterator for SetSizeNIter<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -41,7 +41,7 @@ impl<T: BitSet + ShiftableBitSet + FiniteBitSet> Iterator for SetSizeNIter<T> {
     }
 }
 
-impl<T: BitSet + ShiftableBitSet + FiniteBitSet> SetSizeNIter<T> {
+impl<T: BitSet + ShiftableBitSet + FiniteBitSet + Clone> SetSizeNIter<T> {
     /// Returns `None` if the count is 0 or the maximum size of the set or greater
     #[must_use]
     pub fn try_new(element_count: u32) -> Option<Self> {

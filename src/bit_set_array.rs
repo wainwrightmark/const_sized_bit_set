@@ -112,7 +112,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
 
     #[must_use]
     #[inline]
-    pub const fn is_empty(self) -> bool {
+    pub const fn is_empty_const(self) -> bool {
         self.eq(&Self::EMPTY)
     }
 

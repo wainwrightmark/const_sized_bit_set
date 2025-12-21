@@ -1,8 +1,6 @@
 use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, BitSetArray, SetElement};
 
-pub trait BitSet:
-    Clone + PartialEq + Extend<SetElement> + FromIterator<SetElement> + IntoIterator<Item = SetElement>
-{
+pub trait BitSet: Sized {
     type Inner;
 
     const EMPTY: Self;
@@ -15,9 +13,7 @@ pub trait BitSet:
 
     fn from_first_n(n: u32) -> Self;
 
-    fn is_empty(&self) -> bool {
-        self == &Self::EMPTY
-    }
+    fn is_empty(&self) -> bool;
 
     fn contains(&self, element: SetElement) -> bool;
 
@@ -41,7 +37,10 @@ pub trait BitSet:
         }
     }
     #[must_use]
-    fn with_bit_set(&self, element: SetElement, bit: bool) -> Self {
+    fn with_bit_set(&self, element: SetElement, bit: bool) -> Self
+    where
+        Self: Clone,
+    {
         let mut s = self.clone();
         s.set_bit(element, bit);
         s
@@ -52,7 +51,10 @@ pub trait BitSet:
     fn insert(&mut self, element: SetElement) -> bool;
 
     #[must_use]
-    fn with_inserted(&self, element: SetElement) -> Self {
+    fn with_inserted(&self, element: SetElement) -> Self
+    where
+        Self: Clone,
+    {
         let mut s = self.clone();
         s.insert(element);
         s
@@ -63,7 +65,10 @@ pub trait BitSet:
     fn remove(&mut self, element: SetElement) -> bool;
 
     #[must_use]
-    fn with_removed(&self, element: SetElement) -> Self {
+    fn with_removed(&self, element: SetElement) -> Self
+    where
+        Self: Clone,
+    {
         let mut s = self.clone();
         s.remove(element);
         s
@@ -72,7 +77,10 @@ pub trait BitSet:
     fn swap_bits(&mut self, i: u32, j: u32);
 
     #[must_use]
-    fn with_bits_swapped(&self, i: u32, j: u32) -> Self {
+    fn with_bits_swapped(&self, i: u32, j: u32) -> Self
+    where
+        Self: Clone,
+    {
         let mut s = self.clone();
         s.swap_bits(i, j);
         s
@@ -87,7 +95,10 @@ pub trait BitSet:
     fn intersect_with(&mut self, rhs: &Self);
 
     #[must_use]
-    fn with_intersect(&self, rhs: &Self) -> Self {
+    fn with_intersect(&self, rhs: &Self) -> Self
+    where
+        Self: Clone,
+    {
         let mut s = self.clone();
         s.intersect_with(rhs);
         s
@@ -95,7 +106,10 @@ pub trait BitSet:
 
     fn union_with(&mut self, rhs: &Self);
     #[must_use]
-    fn with_union(&self, rhs: &Self) -> Self {
+    fn with_union(&self, rhs: &Self) -> Self
+    where
+        Self: Clone,
+    {
         let mut s = self.clone();
         s.union_with(rhs);
         s
@@ -104,7 +118,10 @@ pub trait BitSet:
     fn except_with(&mut self, rhs: &Self);
 
     #[must_use]
-    fn with_except(&self, rhs: &Self) -> Self {
+    fn with_except(&self, rhs: &Self) -> Self
+    where
+        Self: Clone,
+    {
         let mut s = self.clone();
         s.except_with(rhs);
         s
@@ -114,7 +131,10 @@ pub trait BitSet:
     fn symmetric_difference_with(&mut self, rhs: &Self);
 
     #[must_use]
-    fn with_symmetric_difference(&self, rhs: &Self) -> Self {
+    fn with_symmetric_difference(&self, rhs: &Self) -> Self
+    where
+        Self: Clone,
+    {
         let mut s = self.clone();
         s.symmetric_difference_with(rhs);
         s
@@ -122,7 +142,10 @@ pub trait BitSet:
 
     /// Return the set of minimal members according to a function
     #[must_use]
-    fn min_set_by_key<K: Ord>(&self, f: impl Fn(SetElement) -> K) -> Self {
+    fn min_set_by_key<K: Ord>(&self, f: impl Fn(SetElement) -> K) -> Self
+    where
+        Self: Clone + IntoIterator<Item = SetElement>,
+    {
         let mut result_set = Self::EMPTY;
         let mut iter = self.clone().into_iter();
 
@@ -179,6 +202,7 @@ pub trait BitSet:
     fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(&SetElement) -> bool,
+        Self: Clone + IntoIterator<Item = SetElement>,
     {
         let iter = self.clone().into_iter();
         for x in iter {
@@ -191,6 +215,10 @@ pub trait BitSet:
 
 macro_rules! impl_bit_set_trait_methods {
     () => {
+        fn is_empty(&self)-> bool{
+            self.is_empty_const()
+        }
+
         fn len(&self) -> u32 {
             self.len_const()
         }

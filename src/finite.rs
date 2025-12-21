@@ -14,7 +14,10 @@ pub trait FiniteBitSet: BitSet {
     fn negate(&mut self);
 
     #[must_use]
-    fn with_negated(&self) -> Self {
+    fn with_negated(&self) -> Self
+    where
+        Self: Clone,
+    {
         let mut s = self.clone();
         s.negate();
         s
@@ -24,7 +27,10 @@ pub trait FiniteBitSet: BitSet {
     fn reverse(&mut self);
 
     #[must_use]
-    fn with_reversed(&self) -> Self {
+    fn with_reversed(&self) -> Self
+    where
+        Self: Clone,
+    {
         let mut s = self.clone();
         s.reverse();
         s
