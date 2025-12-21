@@ -62,6 +62,21 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
 
     #[inline]
     #[must_use]
+    const fn to_word_and_shift(element: SetElement) -> (usize, SetElement) {
+        let word_index = (element / WORD_BITS) as usize;
+        let shift = element % WORD_BITS;
+        (word_index, shift)
+    }
+
+    #[inline]
+    #[must_use]
+    #[expect(clippy::cast_possible_truncation)]
+    const fn to_full_set_element(element: SetElement, word_index: usize) -> SetElement {
+        element + (word_index as u32 * WORD_BITS)
+    }
+
+    #[inline]
+    #[must_use]
     pub fn from_fn<F: FnMut(u32) -> bool>(mut cb: F) -> Self {
         let mut result = Self::default();
         for x in (0..(Self::WORDS_U32 * (WORD_BITS))).filter(|x| cb(*x)) {
@@ -157,12 +172,11 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     /// PANICS if `value` is out of range
     #[inline]
     pub const fn insert_const(&mut self, value: u32) -> bool {
-        let word = value / WORD_BITS;
-        let shift = value % WORD_BITS;
+        let (word, shift) = Self::to_word_and_shift(value);
         let mask = 1u64 << shift;
-        let r = self.0[word as usize] & mask == 0;
+        let r = self.0[word] & mask == 0;
 
-        self.0[word as usize] |= mask;
+        self.0[word] |= mask;
         r
     }
 
@@ -172,12 +186,11 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     /// PANICS if `value` is out of range
     #[inline]
     pub const fn remove_const(&mut self, value: u32) -> bool {
-        let word = value / WORD_BITS;
-        let shift = value % WORD_BITS;
+        let (word, shift) = Self::to_word_and_shift(value);
         let mask = 1u64 << shift;
-        let r = self.0[word as usize] & mask != 0;
+        let r = self.0[word] & mask != 0;
 
-        self.0[word as usize] &= !mask;
+        self.0[word] &= !mask;
         r
     }
 
@@ -207,9 +220,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     #[must_use]
     #[inline]
     pub const fn with_inserted(&self, value: u32) -> Self {
-        let word = (value / WORD_BITS) as usize;
-        let shift = value % WORD_BITS;
-
+        let (word, shift) = Self::to_word_and_shift(value);
         let mut arr = self.0;
         arr[word] = self.0[word] | (1u64 << shift);
 
@@ -220,9 +231,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     #[must_use]
     #[inline]
     pub const fn with_removed(&self, element: SetElement) -> Self {
-        let word = (element / WORD_BITS) as usize;
-        let shift = element % WORD_BITS;
-
+        let (word, shift) = Self::to_word_and_shift(element);
         let mut arr = self.0;
         arr[word] = self.0[word] & !(1u64 << shift);
 
@@ -233,14 +242,12 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     #[inline]
     #[doc(alias = "get_bit")]
     pub const fn contains_const(&self, element: SetElement) -> bool {
-        let word_index = (element / WORD_BITS) as usize;
+        let (word, shift) = Self::to_word_and_shift(element);
 
-        let shift = element % WORD_BITS;
-
-        if word_index >= WORDS {
+        if word >= WORDS {
             return false;
         }
-        let word = self.0[word_index];
+        let word = self.0[word];
 
         (word >> shift) & 1 == 1
     }
@@ -392,8 +399,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
         while word < WORDS {
             let tz = self.0[word].trailing_zeros();
             if tz < u64::BITS {
-                #[expect(clippy::cast_possible_truncation)]
-                return Some(tz + (word as u32 * (WORD_BITS)));
+                return Some(Self::to_full_set_element(tz, word));
             }
             word += 1;
         }
@@ -409,8 +415,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
 
         loop {
             if let Some(index) = (u64::BITS - 1).checked_sub(self.0[word].leading_zeros()) {
-                #[expect(clippy::cast_possible_truncation)]
-                let r = index + (word as u32 * (WORD_BITS));
+                let r = Self::to_full_set_element(index, word);
                 return Some(r);
             }
             if let Some(nw) = word.checked_sub(1) {
@@ -431,8 +436,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
             let word = self.0[word_index];
             if word != 0 {
                 let tz = word.trailing_zeros();
-                #[expect(clippy::cast_possible_truncation)]
-                let r = tz + (word_index as u32 * (WORD_BITS));
+                let r = Self::to_full_set_element(tz, word_index);
                 let t = word & (0u64.wrapping_sub(word));
                 self.0[word_index] ^= t;
 
@@ -455,8 +459,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
 
             if word != 0 {
                 let index = (u64::BITS - 1) - word.leading_zeros();
-                #[expect(clippy::cast_possible_truncation)]
-                let r = index + (word_index as u32 * (WORD_BITS));
+                let r = Self::to_full_set_element(index, word_index);
                 self.0[word_index] &= !(1u64 << index);
                 return Some(r);
             }
@@ -494,8 +497,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
                         word >>= to;
                         shift += to;
                     } else {
-                        #[expect(clippy::cast_possible_truncation)]
-                        let r = (shift + n) + (word_index as u32 * (WORD_BITS));
+                        let r = Self::to_full_set_element(shift + n, word_index);
                         return Some(r);
                     }
                 }
@@ -523,16 +525,14 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
         if let Some(x) =
             BitSet64::from_inner_const(self.0[word]).smallest_element_greater_than_const(e)
         {
-            #[expect(clippy::cast_possible_truncation)]
-            return Some(x + (word as u32 * u64::BITS));
+            return Some(Self::to_full_set_element(x, word));
         }
         word += 1;
 
         while word < WORDS {
             let a = BitSet64::from_inner_const(self.0[word]);
             if let Some(x) = a.first_const() {
-                #[expect(clippy::cast_possible_truncation)]
-                return Some(x + (word as u32 * u64::BITS));
+                return Some(Self::to_full_set_element(x, word));
             }
             word += 1;
         }
@@ -554,8 +554,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
 
         if let Some(x) = BitSet64::from_inner_const(self.0[word]).largest_element_less_than_const(e)
         {
-            #[expect(clippy::cast_possible_truncation)]
-            return Some(x + (word as u32 * u64::BITS));
+            return Some(Self::to_full_set_element(x, word));
         }
 
         match word.checked_sub(1) {
@@ -566,8 +565,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
         loop {
             let a = BitSet64::from_inner_const(self.0[word]);
             if let Some(x) = a.last_const() {
-                #[expect(clippy::cast_possible_truncation)]
-                return Some(x + (word as u32 * u64::BITS));
+                return Some(Self::to_full_set_element(x, word));
             }
 
             match word.checked_sub(1) {
