@@ -67,7 +67,7 @@ macro_rules! impl_bit_set_iterator {
                     self.0 = <$inner>::EMPTY;
                     return None;
                 }
-                #[allow(clippy::cast_possible_truncation)]
+                #[expect(clippy::cast_possible_truncation)]
                 let mut n = n as SetElement;
                 let mut shift = 0;
                 loop {
@@ -161,7 +161,7 @@ macro_rules! impl_bit_set_iterator {
                 return None;
             }
 
-            #[allow(clippy::cast_possible_truncation)]
+            #[expect(clippy::cast_possible_truncation)]
             let mut n = n as SetElement;
 
             let mut shift = 0;

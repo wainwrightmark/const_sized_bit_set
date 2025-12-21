@@ -45,7 +45,7 @@ impl<const BITS_PER_NUMBER: u32> FromIterator<Inner64> for BitMap64<BITS_PER_NUM
         let mut set = Self(0);
 
         for (key, value) in iter.into_iter().enumerate() {
-            #[allow(clippy::cast_possible_truncation)]
+            #[expect(clippy::cast_possible_truncation)]
             set.insert(key as u32, value);
         }
         set
@@ -118,7 +118,7 @@ impl<const BITS_PER_NUMBER: u32> Iterator for BitMapIterator64<BITS_PER_NUMBER> 
         Some(v)
     }
 
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(clippy::cast_possible_truncation)]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         self.index += n as u32;
         self.next()
@@ -178,7 +178,7 @@ impl<const BITS_PER_NUMBER: u32> DoubleEndedIterator for BitMapIterator64<BITS_P
         Some(r)
     }
 
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(clippy::cast_possible_truncation)]
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         self.index += n as u32;
         self.inner_map.0 <<= n as u32 * BITS_PER_NUMBER;

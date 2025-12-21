@@ -488,7 +488,7 @@ impl Iterator for BitSetIter {
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         let mut word_index = 0;
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(clippy::cast_possible_truncation)]
         let mut n = n as u32;
         while word_index < self.inner.0.len() {
             if let Some(new_n) = n.checked_sub(self.inner.0[word_index].count_ones()) {
@@ -566,7 +566,7 @@ impl Iterator for BitSetIter {
 
         for index in 0..self.inner.0.len() {
             let word = self.inner.0[index];
-            #[allow(clippy::cast_possible_truncation)]
+            #[expect(clippy::cast_possible_truncation)]
             let mut multiplier = index as u32 * WORD_BITS;
 
             if word == u64::MAX {
@@ -612,7 +612,7 @@ impl DoubleEndedIterator for BitSetIter {
 
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         let mut word_index = self.inner.0.len().checked_sub(1)?;
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(clippy::cast_possible_truncation)]
         let mut n = n as u32;
         loop {
             if let Some(new_n) = n.checked_sub(self.inner.0[word_index].count_ones()) {

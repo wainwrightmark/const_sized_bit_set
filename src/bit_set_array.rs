@@ -156,7 +156,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     #[inline]
     pub const fn insert_const(&mut self, value: u32) -> bool {
         let word = value / WORD_BITS;
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(clippy::cast_possible_truncation)]
         let shift = (value % WORD_BITS) as u32;
         let mask = 1u64 << shift;
         let r = self.0[word as usize] & mask == 0;
@@ -172,7 +172,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     #[inline]
     pub const fn remove_const(&mut self, value: u32) -> bool {
         let word = value / WORD_BITS;
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(clippy::cast_possible_truncation)]
         let shift = (value % WORD_BITS) as u32;
         let mask = 1u64 << shift;
         let r = self.0[word as usize] & mask != 0;
@@ -208,7 +208,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     #[inline]
     pub const fn with_inserted(&self, value: u32) -> Self {
         let word = (value / WORD_BITS) as usize;
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(clippy::cast_possible_truncation)]
         let shift = (value % WORD_BITS) as u32;
 
         let mut arr = self.0;
@@ -689,7 +689,7 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
     #[inline]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         let mut word_index = 0;
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(clippy::cast_possible_truncation)]
         let mut n = n as u32;
         while word_index < WORDS {
             if let Some(new_n) = n.checked_sub(self.inner.0[word_index].count_ones()) {
@@ -767,7 +767,7 @@ impl<const WORDS: usize> Iterator for BitSetIter<WORDS> {
 
         for index in 0..WORDS {
             let word = self.inner.0[index];
-            #[allow(clippy::cast_possible_truncation)]
+            #[expect(clippy::cast_possible_truncation)]
             let mut multiplier = index as u32 * u64::BITS;
 
             if word == u64::MAX {
@@ -813,7 +813,7 @@ impl<const WORDS: usize> DoubleEndedIterator for BitSetIter<WORDS> {
 
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
         let mut word_index = BitSetArray::<WORDS>::LAST_WORD;
-        #[allow(clippy::cast_possible_truncation)]
+        #[expect(clippy::cast_possible_truncation)]
         let mut n = n as u32;
         loop {
             if let Some(new_n) = n.checked_sub(self.inner.0[word_index].count_ones()) {

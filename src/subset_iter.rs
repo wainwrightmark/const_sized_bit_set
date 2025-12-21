@@ -4,7 +4,7 @@ use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, bit_set_trait::Bit
 pub struct SubsetIter<T: BitSet, const BITS: usize>(Option<(T, T)>);
 
 impl<T: BitSet, const BITS: usize> SubsetIter<T, BITS> {
-    #[allow(clippy::cast_possible_truncation)]
+    #[expect(clippy::cast_possible_truncation)]
     pub fn new(superset: &T, subset_size: u32) -> Self {
         let Some(subset_size_minus_one) = subset_size.checked_sub(1) else {
             //return empty set
@@ -34,7 +34,7 @@ impl<T: BitSet, const BITS: usize> core::iter::FusedIterator for SubsetIter<T, B
 impl<T: BitSet, const BITS: usize> Iterator for SubsetIter<T, BITS> {
     type Item = T;
 
-    #[allow(warnings)]
+    #[expect(warnings)]
     fn next(&mut self) -> Option<Self::Item> {
         let (next_set, excluded_set) = self.0.as_mut()?;
         let result = next_set.clone();
