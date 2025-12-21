@@ -85,6 +85,7 @@ macro_rules! define_bit_set_n {
             }
 
             /// Remove an element from the set
+            /// Returns whether the element was removed (was previously present)
             #[inline]
             pub const fn remove_const(&mut self, element: SetElement) -> bool {
                 debug_assert!(
@@ -114,7 +115,7 @@ macro_rules! define_bit_set_n {
                 }
             }
 
-            /// Swap the bits at i and j
+            /// Swap the values of the bits at i and j
             #[inline]
             pub const fn swap_bits_const(&mut self, i: SetElement, j: SetElement) {
                 debug_assert!(
@@ -145,6 +146,7 @@ macro_rules! define_bit_set_n {
                 self.intersect_with_const(&o)
             }
 
+            ///Changes this set to contain only the elements that are either currently present or present in `rhs` but not both.
             pub const fn symmetric_difference_with_const(&mut self, rhs: &Self) {
                 self.0 ^= rhs.0
             }

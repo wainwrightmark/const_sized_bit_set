@@ -1,7 +1,5 @@
 use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, BitSetArray, SetElement};
 
-
-
 pub trait BitSet:
     Clone + PartialEq + Extend<SetElement> + FromIterator<SetElement> + IntoIterator<Item = SetElement>
 {
@@ -49,6 +47,8 @@ pub trait BitSet:
         s
     }
 
+    /// Insert an element into the set
+    /// Returns whether the element was inserted (it was not already present)
     fn insert(&mut self, element: SetElement) -> bool;
 
     #[must_use]
@@ -58,6 +58,8 @@ pub trait BitSet:
         s
     }
 
+    /// Remove an element from the set
+    /// Returns whether the element was removed (was previously present)
     fn remove(&mut self, element: SetElement) -> bool;
 
     #[must_use]
@@ -108,6 +110,7 @@ pub trait BitSet:
         s
     }
 
+    ///Changes this set to contain only the elements that are either currently present or present in `rhs` but not both.
     fn symmetric_difference_with(&mut self, rhs: &Self);
 
     #[must_use]
@@ -186,7 +189,6 @@ pub trait BitSet:
     }
 }
 
-
 macro_rules! impl_bit_set_trait_methods {
     () => {
         fn len(&self) -> u32 {
@@ -261,8 +263,6 @@ macro_rules! impl_bit_set_trait_methods {
             self.symmetric_difference_with_const(rhs);
         }
 
-        
-
         fn nth(&self, n: u32) -> Option<SetElement> {
             self.nth_const(n)
         }
@@ -290,7 +290,6 @@ macro_rules! impl_bit_set_trait {
         impl BitSet for $name {
             type Inner = $inner;
             const EMPTY: Self = Self::EMPTY;
-            
 
             impl_bit_set_trait_methods!();
         }
@@ -306,6 +305,6 @@ impl_bit_set_trait!(BitSet128, u128);
 impl<const WORDS: usize> BitSet for BitSetArray<WORDS> {
     type Inner = [u64; WORDS];
     const EMPTY: Self = Self::EMPTY;
-    
+
     impl_bit_set_trait_methods!();
 }

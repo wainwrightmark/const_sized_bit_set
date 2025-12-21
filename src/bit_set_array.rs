@@ -220,10 +220,9 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     /// PANICS if value is out of range
     #[must_use]
     #[inline]
-    pub const fn with_removed(&self, value: u32) -> Self {
-        let word = (value / WORD_BITS) as usize;
-        #[allow(clippy::cast_possible_truncation)]
-        let shift = (value % WORD_BITS) as u32;
+    pub const fn with_removed(&self, element: SetElement) -> Self {
+        let word = (element / WORD_BITS) as usize;        
+        let shift = element % WORD_BITS;
 
         let mut arr = self.0;
         arr[word] = self.0[word] & !(1u64 << shift);
@@ -234,10 +233,10 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     #[must_use]
     #[inline]
     #[doc(alias = "get_bit")]
-    pub const fn contains_const(&self, index: u32) -> bool {
-        let word_index = (index / WORD_BITS) as usize;
-        #[allow(clippy::cast_possible_truncation)]
-        let shift = (index % WORD_BITS) as u32;
+    pub const fn contains_const(&self, element: SetElement) -> bool {
+        let word_index = (element / WORD_BITS) as usize;
+       
+        let shift = element % WORD_BITS;
 
         if word_index >= WORDS {
             return false;
@@ -471,8 +470,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     #[inline]
     pub const fn nth_const(&self, n: u32) -> Option<u32> {
         let mut word_index = 0;
-        #[allow(clippy::cast_possible_truncation)]
-        let mut n = n as u32;
+        let mut n = n;
         while word_index < WORDS {
             if let Some(new_n) = n.checked_sub(self.0[word_index].count_ones()) {
                 n = new_n;
