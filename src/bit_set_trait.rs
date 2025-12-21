@@ -132,7 +132,7 @@ pub trait BitSet:
         let mut min = f(first);
         result_set.insert(first);
 
-        while let Some(next) = iter.next() {
+        for next in iter {
             let k = f(next);
             match k.cmp(&min) {
                 core::cmp::Ordering::Less => {

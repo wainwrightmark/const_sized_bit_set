@@ -61,8 +61,7 @@ macro_rules! define_bit_set_n {
             pub const fn negate_const(&mut self) {
                 self.0 = !self.0
             }
-            
-            
+
             #[inline]
             pub const fn reverse_const(&mut self) {
                 self.0 = self.0.reverse_bits();
@@ -223,7 +222,7 @@ macro_rules! define_bit_set_n {
                 }
                 let element = (Self::CAPACITY - 1) - self.0.leading_zeros();
 
-                self.0 &= !(1 << element);//todo xor here?
+                self.0 &= !(1 << element); //todo xor here?
                 return Some(element);
             }
 
@@ -296,9 +295,8 @@ macro_rules! define_bit_set_n {
                 };
                 if inner == 0 {
                     return None;
-                } else {
-                    return Some(inner.trailing_zeros() + index + 1);
                 }
+                return Some(inner.trailing_zeros() + index + 1);
             }
 
             /// Return the largest element less than `index`
@@ -318,9 +316,8 @@ macro_rules! define_bit_set_n {
                 };
                 if inner == 0 {
                     return None;
-                } else {
-                    return Some(index - 1 - inner.leading_zeros());
                 }
+                return Some(index - 1 - inner.leading_zeros());
             }
         }
 
@@ -339,8 +336,6 @@ macro_rules! define_bit_set_n {
                 set
             }
         }
-
-        
     };
 }
 
@@ -622,7 +617,7 @@ mod tests {
                 e.checked_sub(1)
             };
             let actual = set.largest_element_less_than(e);
-            assert_eq!(actual, expected)
+            assert_eq!(actual, expected);
         }
     }
 
@@ -634,12 +629,12 @@ mod tests {
             let expected = if e % 2 == 0 { e + 2 } else { e + 1 };
             let expected = if expected >= 8 { None } else { Some(expected) };
             let actual = set.smallest_element_greater_than(e);
-            assert_eq!(actual, expected, "e = {e}")
+            assert_eq!(actual, expected, "e = {e}");
         }
     }
 
     #[test]
-    fn test_reverse(){
+    fn test_reverse() {
         let set = BitSet8::from_fn(|x| x % 2 == 0);
         let expected_set = BitSet8::from_fn(|x| x % 2 == 1);
 

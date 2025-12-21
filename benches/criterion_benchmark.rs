@@ -134,6 +134,7 @@ pub fn sum_all_back_benchmark(c: &mut Criterion) {
 
 pub fn sum_with_fold_benchmark(c: &mut Criterion) {
     fn sum_with_fold_elements<const W: usize>(set: BitSetArray<W>) -> u32 {
+        #[allow(clippy::unnecessary_fold)]
         set.into_iter().fold(0, |acc, x| acc + x)
     }
 

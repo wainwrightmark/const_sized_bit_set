@@ -16,8 +16,8 @@ pub mod bit_set_vec;
 
 pub type SetElement = u32;
 
-use crate::bit_set_array::*;
-use crate::bit_set_n::*;
+use crate::bit_set_array::BitSetArray;
+use crate::bit_set_n::{BitSet128, BitSet16, BitSet32, BitSet64, BitSet8};
 
 pub mod prelude {    
     pub use crate::bit_set_n::*;

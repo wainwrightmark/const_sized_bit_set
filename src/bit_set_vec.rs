@@ -22,7 +22,7 @@ impl core::fmt::Display for BitSetVec {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_char('[')?;
         let mut write_commas: bool = false;
-        for x in self.clone().into_iter() {
+        for x in self.clone() {
             if write_commas {
                 f.write_char(',')?;
                 f.write_char(' ')?;
@@ -57,9 +57,9 @@ impl BitSetVec {
 
     #[inline]
     #[must_use]
-    fn enumerate_sets<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = (usize, BitSet64)> + ExactSizeIterator + DoubleEndedIterator + use<'a>
+    fn enumerate_sets(
+        &self,
+    ) -> impl ExactSizeIterator<Item = (usize, BitSet64)> + DoubleEndedIterator + use<'_>
     {
         self.0
             .iter()
@@ -67,7 +67,7 @@ impl BitSetVec {
             .enumerate()
     }
     #[inline]
-    fn get_or_create_word_n<'a>(&'a mut self, word_index: usize) -> &'a mut u64 {
+    fn get_or_create_word_n(&mut self, word_index: usize) -> &mut u64 {
         if let Some(diff) = (word_index + 1).checked_sub(self.0.len()) {
             self.0.extend(std::iter::repeat_n(0, diff));
         }
@@ -96,7 +96,7 @@ impl BitSetVec {
 
     #[inline]
 
-    fn mutate_inner<'a, R>(inner: &'a mut u64, f: impl FnOnce(&mut BitSet64) -> R) -> R {
+    fn mutate_inner<R>(inner: &mut u64, f: impl FnOnce(&mut BitSet64) -> R) -> R {
         let mut set = BitSet64::from_inner(*inner);
         let result = f(&mut set);
         *inner = set.into_inner_const();
@@ -150,7 +150,7 @@ impl BitSet for BitSetVec {
 
     fn first(&self) -> Option<SetElement> {
         self.enumerate_sets()
-            .flat_map(|(word_index, set)| {
+            .filter_map(|(word_index, set)| {
                 set.first_const()
                     .map(|x| Self::to_full_set_element(x, word_index))
             })
@@ -160,7 +160,7 @@ impl BitSet for BitSetVec {
     fn last(&self) -> Option<SetElement> {
         self.enumerate_sets()
             .rev()
-            .flat_map(|(word_index, set)| {
+            .filter_map(|(word_index, set)| {
                 set.last_const()
                     .map(|x| Self::to_full_set_element(x, word_index))
             })
@@ -169,11 +169,8 @@ impl BitSet for BitSetVec {
 
     fn pop(&mut self) -> Option<SetElement> {
         for (word_index, inner) in self.0.iter_mut().enumerate() {
-            match Self::mutate_inner(inner, |s| s.pop_const()) {
-                Some(e) => {
-                    return Some(Self::to_full_set_element(e, word_index));
-                }
-                None => {}
+            if let Some(e) = Self::mutate_inner(inner, super::bit_set_n::BitSet64::pop_const) {
+                return Some(Self::to_full_set_element(e, word_index));
             }
         }
         None
@@ -181,11 +178,8 @@ impl BitSet for BitSetVec {
 
     fn pop_last(&mut self) -> Option<SetElement> {
         for (word_index, inner) in self.0.iter_mut().enumerate().rev() {
-            match Self::mutate_inner(inner, |s| s.pop_last_const()) {
-                Some(e) => {
-                    return Some(Self::to_full_set_element(e, word_index));
-                }
-                None => {}
+            if let Some(e) = Self::mutate_inner(inner, super::bit_set_n::BitSet64::pop_last_const) {
+                return Some(Self::to_full_set_element(e, word_index));
             }
         }
         None
@@ -228,7 +222,7 @@ impl BitSet for BitSetVec {
                 None => return false,
             }
         }
-        return true;
+        true
     }
 
     fn overlaps(&self, rhs: &Self) -> bool {
@@ -254,19 +248,16 @@ impl BitSet for BitSetVec {
     fn union_with(&mut self, rhs: &Self) {
         for (word_index, r_set) in rhs.enumerate_sets() {
             let s_inner = self.get_or_create_word_n(word_index);
-            Self::mutate_inner(s_inner, |s| s.union_with_const(&r_set))
+            Self::mutate_inner(s_inner, |s| s.union_with_const(&r_set));
         }
     }
 
     fn except_with(&mut self, rhs: &Self) {
         for (word_index, s_inner) in self.0.iter_mut().enumerate() {
-            match rhs.try_get_word_set(word_index) {
-                Some(r_set) => {
-                    Self::mutate_inner(s_inner, |s| s.except_with_const(&r_set));
-                }
-                None => {
-                    //rhs is empty here so do nothing
-                }
+            if let Some(r_set) = rhs.try_get_word_set(word_index) {
+                Self::mutate_inner(s_inner, |s| s.except_with_const(&r_set));
+            } else {
+                //rhs is empty here so do nothing
             }
         }
     }
@@ -304,7 +295,7 @@ impl BitSet for BitSetVec {
                 total += set.len();
             }
         }
-        return total;
+        total
     }
 
     fn count_greater_elements(&self, element: SetElement) -> u32 {
@@ -322,7 +313,7 @@ impl BitSet for BitSetVec {
                 }
             }
         }
-        return total;
+        total
     }
 
     fn smallest_element_greater_than(&self, index: SetElement) -> Option<SetElement> {
@@ -347,7 +338,7 @@ impl BitSet for BitSetVec {
                 word += 1;
             }
         }
-        return None;
+        None
     }
 
     fn largest_element_less_than(&self, index: SetElement) -> Option<SetElement> {
@@ -1426,7 +1417,7 @@ pub mod tests {
         assert_eq!(set.to_string(), "[0, 99, 100]");
     }
 
-    pub const fn n_choose_k(n: u32, k: u32) -> u32 {
+    #[must_use] pub const fn n_choose_k(n: u32, k: u32) -> u32 {
         let mut result = 1;
         let m = if k <= n - k { k } else { n - k };
         let mut i = 0;
@@ -1501,7 +1492,7 @@ pub mod tests {
                 0x1111111111111111,
                 0x1111111111111111
             ]
-        )
+        );
     }
 
     #[test]
@@ -1527,7 +1518,7 @@ pub mod tests {
 
         let expected = BitSetVec::from_fn(256, |x| x % 3 == 0 && x % 5 != 0);
 
-        assert_eq!(actual.into_inner(), expected.into_inner())
+        assert_eq!(actual.into_inner(), expected.into_inner());
     }
 
     #[test]
@@ -1547,7 +1538,7 @@ pub mod tests {
                 Some(120),
                 None
             ]
-        )
+        );
     }
 
     #[test]
@@ -1557,7 +1548,7 @@ pub mod tests {
         for x in 0..128 {
             let actual = mod20_is0.count_lesser_elements(x);
             let expected = (x + 19) / 20;
-            assert_eq!(actual, expected)
+            assert_eq!(actual, expected);
         }
     }
 
@@ -1568,7 +1559,7 @@ pub mod tests {
         for x in 0..128 {
             let actual = mod20_is0.count_greater_elements(x);
             let expected = 6 - (x / 20);
-            assert_eq!(actual, expected, "x = {x}")
+            assert_eq!(actual, expected, "x = {x}");
         }
     }
 
@@ -1653,7 +1644,7 @@ pub mod tests {
                 e.checked_sub(1)
             };
             let actual = set.largest_element_less_than(e);
-            assert_eq!(actual, expected)
+            assert_eq!(actual, expected);
         }
     }
 
@@ -1669,7 +1660,7 @@ pub mod tests {
                 Some(expected)
             };
             let actual = set.smallest_element_greater_than(e);
-            assert_eq!(actual, expected, "e = {e}")
+            assert_eq!(actual, expected, "e = {e}");
         }
     }
 }

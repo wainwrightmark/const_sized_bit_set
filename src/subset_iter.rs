@@ -3,8 +3,7 @@ use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, bit_set_trait::Bit
 #[derive(Debug, Clone, PartialEq)]
 pub struct SubsetIter<T: BitSet, const BITS: usize>(Option<(T, T)>);
 
-impl<T: BitSet, const BITS: usize> SubsetIter<T, BITS> {
-    #[expect(clippy::cast_possible_truncation)]
+impl<T: BitSet, const BITS: usize> SubsetIter<T, BITS> {    
     pub fn new(superset: &T, subset_size: u32) -> Self {
         let Some(subset_size_minus_one) = subset_size.checked_sub(1) else {
             //return empty set
@@ -14,7 +13,7 @@ impl<T: BitSet, const BITS: usize> SubsetIter<T, BITS> {
         let next_set = match superset.nth(subset_size_minus_one) {
             Some(nth_element) => {
                 let mut s = T::from_first_n(nth_element + 1);
-                s.intersect_with(&superset);
+                s.intersect_with(superset);
                 s
             }
 
@@ -80,7 +79,7 @@ impl<T: BitSet, const BITS: usize> Iterator for SubsetIter<T, BITS> {
         Self: Sized,
         Self::Item: PartialOrd,
     {
-        return true;
+        true
     }
 
     fn min(self) -> Option<Self::Item>
@@ -89,7 +88,7 @@ impl<T: BitSet, const BITS: usize> Iterator for SubsetIter<T, BITS> {
         Self::Item: Ord,
     {
         let (n, _e) = self.0?;
-        return Some(n);
+        Some(n)
     }
 
     //todo last, min, max
@@ -177,7 +176,7 @@ mod tests {
                 );
             }
 
-            let mut sorted = actual.iter().copied().collect::<Vec<_>>();
+            let mut sorted = actual.to_vec();
             sorted.sort();
 
             let _assert_unique = sorted.into_iter().reduce(|prev, x| {
