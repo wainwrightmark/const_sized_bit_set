@@ -5,8 +5,6 @@ use core::iter::FusedIterator;
 #[cfg(any(test, feature = "serde"))]
 use serde::{Deserialize, Serialize};
 
-
-
 /// A set whose members are unsigned integers in `0..(64 * WORDS)`
 /// Most operations are O(1)
 ///
@@ -59,8 +57,7 @@ impl BitSetVec {
     #[must_use]
     fn enumerate_sets(
         &self,
-    ) -> impl ExactSizeIterator<Item = (usize, BitSet64)> + DoubleEndedIterator + use<'_>
-    {
+    ) -> impl ExactSizeIterator<Item = (usize, BitSet64)> + DoubleEndedIterator + use<'_> {
         self.0
             .iter()
             .map(|x| BitSet64::from_inner_const(*x))
@@ -1417,7 +1414,8 @@ pub mod tests {
         assert_eq!(set.to_string(), "[0, 99, 100]");
     }
 
-    #[must_use] pub const fn n_choose_k(n: u32, k: u32) -> u32 {
+    #[must_use]
+    pub const fn n_choose_k(n: u32, k: u32) -> u32 {
         let mut result = 1;
         let m = if k <= n - k { k } else { n - k };
         let mut i = 0;

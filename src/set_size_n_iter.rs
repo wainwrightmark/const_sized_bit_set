@@ -1,4 +1,4 @@
-use crate::{finite::FiniteBitSet, shiftable::ShiftableBitSet, bit_set_trait::BitSet};
+use crate::{bit_set_trait::BitSet, finite::FiniteBitSet, shiftable::ShiftableBitSet};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SetSizeNIter<T: BitSet + ShiftableBitSet + FiniteBitSet> {
@@ -60,7 +60,7 @@ impl<T: BitSet + ShiftableBitSet + FiniteBitSet> SetSizeNIter<T> {
 #[cfg(test)]
 mod tests {
     use super::SetSizeNIter;
-    use crate::{bit_set_trait::BitSet, BitSet8};
+    use crate::{BitSet8, bit_set_trait::BitSet};
     use std::vec;
 
     #[test]

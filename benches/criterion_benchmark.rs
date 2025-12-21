@@ -48,13 +48,21 @@ pub fn subset_iter_benchmark(c: &mut Criterion) {
             .sum()
     }
 
-    group.bench_with_input(BenchmarkId::from_parameter("bs64 5"), &5, |b, &subset_size| {
-        b.iter(|| bitset64_subsets_iter_func(INITIAL_BIT_SET64, subset_size));
-    });
-    
-    group.bench_with_input(BenchmarkId::from_parameter("bs64 7"), &7, |b, &subset_size| {
-        b.iter(|| bitset64_subsets_iter_func(INITIAL_BIT_SET64, subset_size));
-    });
+    group.bench_with_input(
+        BenchmarkId::from_parameter("bs64 5"),
+        &5,
+        |b, &subset_size| {
+            b.iter(|| bitset64_subsets_iter_func(INITIAL_BIT_SET64, subset_size));
+        },
+    );
+
+    group.bench_with_input(
+        BenchmarkId::from_parameter("bs64 7"),
+        &7,
+        |b, &subset_size| {
+            b.iter(|| bitset64_subsets_iter_func(INITIAL_BIT_SET64, subset_size));
+        },
+    );
 }
 
 pub fn from_fn_benchmark(c: &mut Criterion) {

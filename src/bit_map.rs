@@ -103,7 +103,6 @@ impl<const BITS_PER_NUMBER: u32> Iterator for BitMapIterator64<BITS_PER_NUMBER> 
     where
         Self: Sized,
     {
-        
         BitMap64::<BITS_PER_NUMBER>::ENTRIES.saturating_sub(self.index) as usize
     }
 
@@ -210,7 +209,8 @@ impl<const BITS_PER_NUMBER: u32> BitMap64<BITS_PER_NUMBER> {
 
     pub(crate) const MSB_MASK: u64 = Self::LSB_MASK << (BITS_PER_NUMBER - 1);
 
-    #[must_use] pub const fn get(&self, key: u32) -> Inner64 {
+    #[must_use]
+    pub const fn get(&self, key: u32) -> Inner64 {
         let shift = key * BITS_PER_NUMBER;
 
         let i = self.0 >> shift;
@@ -396,7 +396,8 @@ impl<const BITS_PER_NUMBER: u32> BitMap64<BITS_PER_NUMBER> {
     }
 
     /// Returns the (key, value) pair of the minimal element with the lowest key
-    #[must_use] pub const fn min_pair(&self) -> (u32, Inner64) {
+    #[must_use]
+    pub const fn min_pair(&self) -> (u32, Inner64) {
         if self.0 == 0 {
             return (0, 0);
         }
@@ -426,7 +427,8 @@ impl<const BITS_PER_NUMBER: u32> BitMap64<BITS_PER_NUMBER> {
     }
 
     /// Returns the (key, value) pair of the maximal element with the lowest key
-    #[must_use] pub const fn max_pair(&self) -> (u32, Inner64) {
+    #[must_use]
+    pub const fn max_pair(&self) -> (u32, Inner64) {
         if self.0 == 0 {
             return (0, 0);
         }
@@ -455,7 +457,8 @@ impl<const BITS_PER_NUMBER: u32> BitMap64<BITS_PER_NUMBER> {
 
     const MSB_VALUE: u32 = 2u32.pow(BITS_PER_NUMBER - 1);
     /// The sum of all counts in the set
-    #[must_use] pub const fn sum(&self) -> u32 {
+    #[must_use]
+    pub const fn sum(&self) -> u32 {
         let mut sum = 0;
         let mut mask = Self::LSB_MASK;
         let mut multiple = 1;
@@ -488,7 +491,8 @@ impl<const BITS_PER_NUMBER: u32> BitMap64<BITS_PER_NUMBER> {
         self.0 = new_inner;
     }
 
-    #[must_use] pub fn find_index_of_value(&self, value: Inner64)-> Option<u32>{
+    #[must_use]
+    pub fn find_index_of_value(&self, value: Inner64) -> Option<u32> {
         // `mapped` will be 1 on bits with the correct value.
         let mapped = !((Self::LSB_MASK * value) ^ self.0);
         // We are looking for entries which are all 1s
@@ -501,14 +505,13 @@ impl<const BITS_PER_NUMBER: u32> BitMap64<BITS_PER_NUMBER> {
             shift += 1;
         }
 
-        if current== 0{
+        if current == 0 {
             return None;
         }
 
         let r = current.trailing_zeros() / BITS_PER_NUMBER;
         Some(r)
     }
-
 
     pub const fn wrapping_increment(&mut self, key: u32, amount: Inner64) {
         let shift = key * BITS_PER_NUMBER;
@@ -879,11 +882,13 @@ mod tests {
         assert_eq!(half_exhausted_iter.clone().sum::<u64>(), 50u64);
         assert_eq!(half_exhausted_iter.clone().next_back(), Some(14));
 
-
         let mut reverse_iter = set1.clone().into_iter().rev();
         let mut expected_reverse_iter = sequence1.into_iter().rev();
 
-        assert_eq!(reverse_iter.clone().collect::<Vec<_>>(), expected_reverse_iter.clone().collect::<Vec<_>>() );
+        assert_eq!(
+            reverse_iter.clone().collect::<Vec<_>>(),
+            expected_reverse_iter.clone().collect::<Vec<_>>()
+        );
 
         assert_eq!(reverse_iter.nth(4), expected_reverse_iter.nth(4));
         assert_eq!(reverse_iter.nth(3), expected_reverse_iter.nth(3));
@@ -892,25 +897,30 @@ mod tests {
     }
 
     #[test]
-    fn test_formatting(){
+    fn test_formatting() {
         let sequence1: [u64; 16] = [13, 2, 9, 4, 0, 0, 2, 12, 0, 14, 7, 8, 12, 15, 1, 14];
         let set1 = BitMap64::<4>::from_iter(sequence1);
 
         assert_eq!(format!("{set1:X}"), "E1FC87E0C200492D");
         assert_eq!(format!("{set1:x}"), "e1fc87e0c200492d");
-        assert_eq!(format!("{set1:b}"), "1110000111111100100001111110000011000010000000000100100100101101");
-        assert_eq!(format!("{set1:?}"), "[13, 2, 9, 4, 0, 0, 2, 12, 0, 14, 7, 8, 12, 15, 1, 14]");
+        assert_eq!(
+            format!("{set1:b}"),
+            "1110000111111100100001111110000011000010000000000100100100101101"
+        );
+        assert_eq!(
+            format!("{set1:?}"),
+            "[13, 2, 9, 4, 0, 0, 2, 12, 0, 14, 7, 8, 12, 15, 1, 14]"
+        );
     }
 
     #[test]
-    fn test_index_of_value(){
+    fn test_index_of_value() {
         let sequence1: [u64; 16] = [13, 2, 9, 4, 0, 0, 2, 12, 0, 14, 7, 8, 12, 15, 1, 14];
         let set1 = BitMap64::<4>::from_iter(sequence1);
 
-
-        for value in 0u64..16{
-            let expected = sequence1.iter().position(|x| *x== value).map(|x| x as u32);
-            let actual =set1.find_index_of_value(value);
+        for value in 0u64..16 {
+            let expected = sequence1.iter().position(|x| *x == value).map(|x| x as u32);
+            let actual = set1.find_index_of_value(value);
 
             assert_eq!(expected, actual, "Index of {value}");
         }

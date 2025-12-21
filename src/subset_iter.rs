@@ -3,7 +3,7 @@ use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, bit_set_trait::Bit
 #[derive(Debug, Clone, PartialEq)]
 pub struct SubsetIter<T: BitSet, const BITS: usize>(Option<(T, T)>);
 
-impl<T: BitSet, const BITS: usize> SubsetIter<T, BITS> {    
+impl<T: BitSet, const BITS: usize> SubsetIter<T, BITS> {
     pub fn new(superset: &T, subset_size: u32) -> Self {
         let Some(subset_size_minus_one) = subset_size.checked_sub(1) else {
             //return empty set

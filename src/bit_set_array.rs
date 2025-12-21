@@ -126,7 +126,8 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
         Self(inner)
     }
 
-    #[must_use] pub const fn overlaps_const(&self, rhs: &Self) -> bool {
+    #[must_use]
+    pub const fn overlaps_const(&self, rhs: &Self) -> bool {
         let mut i = 0usize;
         while i < WORDS {
             if self.0[i] & rhs.0[i] != 0 {
@@ -219,7 +220,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     #[must_use]
     #[inline]
     pub const fn with_removed(&self, element: SetElement) -> Self {
-        let word = (element / WORD_BITS) as usize;        
+        let word = (element / WORD_BITS) as usize;
         let shift = element % WORD_BITS;
 
         let mut arr = self.0;
@@ -233,7 +234,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     #[doc(alias = "get_bit")]
     pub const fn contains_const(&self, element: SetElement) -> bool {
         let word_index = (element / WORD_BITS) as usize;
-       
+
         let shift = element % WORD_BITS;
 
         if word_index >= WORDS {
@@ -321,7 +322,8 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     }
 
     #[inline]
-    #[must_use] pub const fn is_subset_const(&self, rhs: &Self) -> bool {
+    #[must_use]
+    pub const fn is_subset_const(&self, rhs: &Self) -> bool {
         let mut index = 0;
         while index < WORDS {
             if !BitSet64::from_inner_const(self.0[index])
@@ -334,7 +336,8 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
         true
     }
     #[inline]
-    #[must_use] pub const fn is_superset(&self, rhs: &Self) -> bool {
+    #[must_use]
+    pub const fn is_superset(&self, rhs: &Self) -> bool {
         rhs.is_subset_const(self)
     }
 
@@ -359,13 +362,13 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     }
 
     #[inline]
-    pub const fn reverse_const(&mut self){
-        let Some(mut backward_word) = WORDS.checked_sub(1) else{
+    pub const fn reverse_const(&mut self) {
+        let Some(mut backward_word) = WORDS.checked_sub(1) else {
             return;
         };
         let mut forward_word = 0usize;
 
-        while forward_word < backward_word{
+        while forward_word < backward_word {
             let new_b = self.0[forward_word].reverse_bits();
             let new_f = self.0[backward_word].reverse_bits();
 
@@ -375,7 +378,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
             forward_word += 1;
             backward_word -= 1;
         }
-        if forward_word == backward_word{
+        if forward_word == backward_word {
             self.0[forward_word] = self.0[forward_word].reverse_bits();
         }
     }
@@ -1776,7 +1779,8 @@ pub mod tests {
         assert_eq!(set.to_string(), "[0, 99, 100]");
     }
 
-    #[must_use] pub const fn n_choose_k(n: u32, k: u32) -> u32 {
+    #[must_use]
+    pub const fn n_choose_k(n: u32, k: u32) -> u32 {
         let mut result = 1;
         let m = if k <= n - k { k } else { n - k };
         let mut i = 0;
@@ -1820,8 +1824,7 @@ pub mod tests {
             sorted_results.dedup();
 
             assert_eq!(
-                results,
-                sorted_results,
+                results, sorted_results,
                 "Results should be free of duplicates and sorted"
             );
         }
@@ -2053,15 +2056,13 @@ pub mod tests {
         }
     }
 
-
     #[test]
-    fn test_reverse(){
+    fn test_reverse() {
         let set4 = BitSetArray::<4>::from_fn(|x| x % 2 == 0);
         let expected_set4 = BitSetArray::<4>::from_fn(|x| x % 2 == 1);
 
         assert_eq!(set4.with_reversed(), expected_set4);
-        
-        
+
         let set5 = BitSetArray::<5>::from_fn(|x| x % 2 == 0);
         let expected_set5 = BitSetArray::<5>::from_fn(|x| x % 2 == 1);
 
