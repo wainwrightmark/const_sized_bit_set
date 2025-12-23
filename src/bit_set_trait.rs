@@ -6,7 +6,7 @@ pub trait BitSet: Sized {
     const EMPTY: Self;
 
     #[doc(alias = "count")]
-    fn len(&self) -> u32;
+    fn len(&self) -> u32;//todo rename count
 
     fn into_inner(self) -> Self::Inner;
     fn from_inner(inner: Self::Inner) -> Self;
@@ -213,7 +213,7 @@ pub trait BitSet: Sized {
     }
 
     #[must_use]
-    fn iter_subsets(&self, subset_size: u32) -> impl Iterator<Item = Self>
+    fn iter_subsets(self, subset_size: u32) -> impl ExactSizeIterator<Item = Self> + Clone + core::iter::FusedIterator
     where
         Self: Clone,
     {

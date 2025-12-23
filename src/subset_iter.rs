@@ -1,4 +1,7 @@
-use crate::{bit_set_trait::BitSet, n_choose_k};
+use crate::{
+    bit_set_trait::BitSet,
+    n_choose_k::{self, get_subset_index},
+};
 
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) enum SubsetIter<T: BitSet + Clone> {
@@ -7,19 +10,19 @@ pub(crate) enum SubsetIter<T: BitSet + Clone> {
 }
 
 impl<T: BitSet + Clone> SubsetIter<T> {
-    pub fn new(superset: &T, subset_size: u32) -> Self {
+    pub fn new( mut superset: T, subset_size: u32) -> Self {
         let Some(subset_size_minus_one) = subset_size.checked_sub(1) else {
             //return empty set
             return Self::Unfinished {
                 next_set: T::EMPTY,
-                excluded_set: superset.clone(),
+                excluded_set: superset,
             };
         };
 
         let next_set = match superset.nth(subset_size_minus_one) {
             Some(nth_element) => {
                 let mut s = T::from_first_n(nth_element + 1);
-                s.intersect_with(superset);
+                s.intersect_with(&superset);
                 s
             }
 
@@ -28,16 +31,36 @@ impl<T: BitSet + Clone> SubsetIter<T> {
                 return Self::Finished;
             }
         };
-        let excluded_set = superset.with_except(&next_set);
+        superset.except_with(&next_set);
 
         Self::Unfinished {
             next_set,
-            excluded_set,
+            excluded_set: superset,
         }
     }
 }
 
 impl<T: BitSet + Clone> core::iter::FusedIterator for SubsetIter<T> {}
+impl<T: BitSet + Clone> core::iter::ExactSizeIterator for SubsetIter<T> {
+    fn len(&self) -> usize {
+        match self {
+            SubsetIter::Finished => 0,
+            SubsetIter::Unfinished {
+                next_set,
+                excluded_set,
+            } => {
+                let max =
+                    n_choose_k::NChooseK::new(next_set.len() + excluded_set.len(), next_set.len())
+                        .value();
+
+                let superset = next_set.with_union(excluded_set);
+                let next_set_index = get_subset_index(superset, &next_set);
+
+                (max - next_set_index) as usize
+            }
+        }
+    }
+}
 
 impl<T: BitSet + Clone> Iterator for SubsetIter<T> {
     type Item = T;
@@ -89,7 +112,17 @@ impl<T: BitSet + Clone> Iterator for SubsetIter<T> {
         Some(result)
     }
 
-    //todo count
+    fn count(self) -> usize
+    where
+        Self: Sized,
+    {
+        self.len()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let size = self.len();
+        (size, Some(size))
+    }
 
     fn is_sorted(self) -> bool
     where
@@ -357,4 +390,25 @@ mod tests {
             None
         );
     }
+
+    #[test]
+    pub fn test_len_count_size_hint(){
+        let mut iter = BitSet8::from_inner(0b11101111)
+                .iter_subsets(3);
+
+        let mut expected_count = 35;
+        loop {
+            assert_eq!(expected_count, iter.len());
+            assert_eq!(expected_count, iter.clone() .count());
+            assert_eq!((expected_count, Some(expected_count)), iter.size_hint());
+            if iter.next().is_none(){
+                break;
+            }
+            expected_count -= 1;
+        }
+
+        assert_eq!(expected_count, 0)
+    }
+
+    //#[test]
 }
