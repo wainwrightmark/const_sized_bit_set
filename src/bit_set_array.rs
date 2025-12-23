@@ -1,5 +1,4 @@
 use crate::shiftable::ShiftableBitSet;
-use crate::subset_iter::SubsetIter;
 use crate::{BitSet64, SetElement};
 use core::fmt::{Debug, Write};
 use core::iter::FusedIterator;
@@ -575,18 +574,6 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
         }
     }
 
-    #[must_use]
-    pub fn iter_subsets(
-        &self,
-        subset_size: u32,
-    ) -> impl FusedIterator<Item = Self>
-    //+ DoubleEndedIterator
-    //+ ExactSizeIterator
-    + Debug
-    + Clone
-    + 'static {
-        SubsetIter::<Self, 64>::new(self, subset_size)
-    }
 }
 
 impl<const WORDS: usize> Extend<usize> for BitSetArray<WORDS> {

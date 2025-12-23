@@ -11,6 +11,21 @@ pub(crate) fn subsets_count(set: &impl BitSet, subset_size: u32) -> u32 {
     NChooseK::new(set.len(), subset_size).result
 }
 
+// pub (crate) fn get_subset_index<B: BitSet + Clone>(superset: &B, subset: &B) -> u32{
+//     let mut canonical_set = B::EMPTY;
+//     let mut superset = superset.clone();
+//     let mut index = 0;
+//     while let Some(x) = superset.pop(){
+//         if subset.contains(x){
+//             canonical_set.insert(index);
+//         }
+//         index += 1;
+        
+//     }
+
+//     panic!()
+// }
+
 pub(crate) fn subset_index_to_member<B: BitSet>(set: B, subset_size: u32, index: u32) -> B {
     let mut n_c_k = crate::n_choose_k::NChooseK::new(set.len(), subset_size);
 

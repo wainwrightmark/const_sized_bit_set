@@ -88,7 +88,7 @@ impl BitSetVec {
     #[inline]
     #[must_use]
     #[expect(clippy::cast_possible_truncation)]
-    fn to_full_set_element(element: SetElement, word_index: usize) -> SetElement {
+    fn to_full_set_element(element: SetElement, word_index: usize) -> SetElement {        
         element + (word_index as u32 * WORD_BITS)
     }
 

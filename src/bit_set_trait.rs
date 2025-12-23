@@ -211,11 +211,19 @@ pub trait BitSet: Sized {
             }
         }
     }
+
+    #[must_use]
+    fn iter_subsets(&self, subset_size: u32) -> impl Iterator<Item = Self>
+    where
+        Self: Clone,
+    {
+        crate::subset_iter::SubsetIter::new(self, subset_size)
+    }
 }
 
 macro_rules! impl_bit_set_trait_methods {
     () => {
-        fn is_empty(&self)-> bool{
+        fn is_empty(&self) -> bool {
             self.is_empty_const()
         }
 

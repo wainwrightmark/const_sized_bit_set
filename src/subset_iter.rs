@@ -1,12 +1,12 @@
-use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, bit_set_trait::BitSet, n_choose_k};
+use crate::{bit_set_trait::BitSet, n_choose_k};
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum SubsetIter<T: BitSet + Clone, const BITS: usize> {
+pub(crate) enum SubsetIter<T: BitSet + Clone> {
     Finished,
     Unfinished { next_set: T, excluded_set: T },
 }
 
-impl<T: BitSet + Clone, const BITS: usize> SubsetIter<T, BITS> {
+impl<T: BitSet + Clone> SubsetIter<T> {
     pub fn new(superset: &T, subset_size: u32) -> Self {
         let Some(subset_size_minus_one) = subset_size.checked_sub(1) else {
             //return empty set
@@ -37,9 +37,9 @@ impl<T: BitSet + Clone, const BITS: usize> SubsetIter<T, BITS> {
     }
 }
 
-impl<T: BitSet + Clone, const BITS: usize> core::iter::FusedIterator for SubsetIter<T, BITS> {}
+impl<T: BitSet + Clone> core::iter::FusedIterator for SubsetIter<T> {}
 
-impl<T: BitSet + Clone, const BITS: usize> Iterator for SubsetIter<T, BITS> {
+impl<T: BitSet + Clone> Iterator for SubsetIter<T> {
     type Item = T;
 
     #[expect(warnings)]
@@ -88,6 +88,8 @@ impl<T: BitSet + Clone, const BITS: usize> Iterator for SubsetIter<T, BITS> {
 
         Some(result)
     }
+
+    //todo count
 
     fn is_sorted(self) -> bool
     where
@@ -138,26 +140,7 @@ impl<T: BitSet + Clone, const BITS: usize> Iterator for SubsetIter<T, BITS> {
     {
         self.last()
     }
-
-    //todo last, min, max
 }
-
-macro_rules! impl_iter_subsets {
-    ($bit_set: ty, $bits:expr) => {
-        impl $bit_set {
-            #[must_use]
-            pub fn iter_subsets(&self, subset_size: u32) -> SubsetIter<Self, $bits> {
-                SubsetIter::new(self, subset_size)
-            }
-        }
-    };
-}
-
-impl_iter_subsets!(BitSet8, 8);
-impl_iter_subsets!(BitSet16, 16);
-impl_iter_subsets!(BitSet32, 32);
-impl_iter_subsets!(BitSet64, 64);
-impl_iter_subsets!(BitSet128, 128);
 
 #[cfg(test)]
 mod tests {
