@@ -4,9 +4,8 @@ pub trait BitSet: Sized {
     type Inner;
 
     const EMPTY: Self;
-
-    #[doc(alias = "count")]
-    fn len(&self) -> u32; //todo rename count
+    ///Returns the number of set bits in the set.
+    fn count(&self) -> u32;
 
     fn into_inner(self) -> Self::Inner;
     fn from_inner(inner: Self::Inner) -> Self;
@@ -225,12 +224,12 @@ pub trait BitSet: Sized {
 
     #[must_use]
     fn count_subsets(&self, subset_size: u32) -> u32 {
-        crate::n_choose_k::NChooseK::new(self.len(), subset_size).value()
+        crate::n_choose_k::NChooseK::new(self.count(), subset_size).value()
     }
 
     #[must_use]
     fn index_of_subset(self, subset: &Self) -> u32 {
-        let n_c_k = crate::n_choose_k::NChooseK::new(self.len(), subset.len());
+        let n_c_k = crate::n_choose_k::NChooseK::new(self.count(), subset.count());
 
         let Some(mut n_c_k) = n_c_k.try_decrement_n() else {
             return 0;
@@ -259,7 +258,7 @@ pub trait BitSet: Sized {
 
     #[must_use]
     fn get_subset(self, subset_size: u32, index: u32) -> Self {
-        let n_c_k = crate::n_choose_k::NChooseK::new(self.len(), subset_size);
+        let n_c_k = crate::n_choose_k::NChooseK::new(self.count(), subset_size);
 
         // The rest of this algorithm calculates the the subsets in reverse order (i.e. index 0 is the largest subset)
         // So reverse the order here to account for that
@@ -301,7 +300,7 @@ macro_rules! impl_bit_set_trait_methods {
             self.is_empty_const()
         }
 
-        fn len(&self) -> u32 {
+        fn count(&self) -> u32 {
             self.len_const()
         }
 

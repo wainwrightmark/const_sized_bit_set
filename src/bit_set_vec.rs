@@ -113,7 +113,7 @@ impl BitSet for BitSetVec {
         self.0.iter().all(|x| *x == 0)
     }
 
-    fn len(&self) -> u32 {
+    fn count(&self) -> u32 {
         self.0.iter().map(|x| x.count_ones()).sum()
     }
 
@@ -273,7 +273,7 @@ impl BitSet for BitSetVec {
         let mut n = n;
 
         for (word, set) in self.enumerate_sets() {
-            if let Some(new_n) = n.checked_sub(set.len()) {
+            if let Some(new_n) = n.checked_sub(set.count()) {
                 n = new_n;
             } else {
                 return set.nth_const(n).map(|e| Self::to_full_set_element(e, word));
@@ -290,7 +290,7 @@ impl BitSet for BitSetVec {
                 total += set.count_lesser_elements(shift);
                 return total;
             } else {
-                total += set.len();
+                total += set.count();
             }
         }
         total
@@ -307,7 +307,7 @@ impl BitSet for BitSetVec {
                     return total;
                 }
                 std::cmp::Ordering::Greater => {
-                    total += set.len();
+                    total += set.count();
                 }
             }
         }
@@ -421,7 +421,7 @@ pub struct BitSetIter {
 
 impl ExactSizeIterator for BitSetIter {
     fn len(&self) -> usize {
-        self.inner.len() as usize
+        self.inner.count() as usize
     }
 }
 impl FusedIterator for BitSetIter {}
@@ -677,7 +677,7 @@ pub mod tests {
     pub fn from_fn_4() {
         let evens = BitSetVec::from_fn(256, |x| x % 2 == 0);
 
-        assert_eq!(128, evens.len());
+        assert_eq!(128, evens.count());
         let iter = evens.into_iter();
         assert_eq!(iter.len(), 128);
 
@@ -693,7 +693,7 @@ pub mod tests {
 
         let set = BitSetVec::from_iter(expected.iter().copied());
 
-        assert_eq!(52, set.len());
+        assert_eq!(52, set.count());
 
         let iter = set.into_iter();
         assert_eq!(iter.len(), 52);
@@ -712,7 +712,7 @@ pub mod tests {
         let mut set = BitSetVec::from_iter(multiples_of_5.iter().copied());
         set.extend(multiples_of_4);
 
-        assert_eq!(103, set.len());
+        assert_eq!(103, set.count());
 
         let expected = BitSetVec::from_fn(256, |x| x % 4 == 0 || x % 5 == 0);
 
@@ -725,7 +725,7 @@ pub mod tests {
 
         let set = BitSetVec::from_iter(expected.iter().copied());
 
-        assert_eq!(52, set.len());
+        assert_eq!(52, set.count());
 
         let iter = set.into_iter();
         assert_eq!(iter.len(), 52);
@@ -1131,7 +1131,7 @@ pub mod tests {
     pub fn from_fn_1() {
         let evens = BitSetVec::from_fn(64, |x| x % 2 == 0);
 
-        assert_eq!(32, evens.len());
+        assert_eq!(32, evens.count());
         let iter = evens.into_iter();
         assert_eq!(iter.len(), 32);
 
@@ -1147,7 +1147,7 @@ pub mod tests {
 
         let set = BitSetVec::from_iter(expected.iter().copied());
 
-        assert_eq!(13, set.len());
+        assert_eq!(13, set.count());
 
         let iter = set.into_iter();
         assert_eq!(iter.len(), 13);
@@ -1164,7 +1164,7 @@ pub mod tests {
 
         let set = BitSetVec::from_iter(expected.iter().copied());
 
-        assert_eq!(13, set.len());
+        assert_eq!(13, set.count());
 
         let iter = set.into_iter();
         assert_eq!(iter.len(), 13);
@@ -1470,7 +1470,7 @@ pub mod tests {
     fn test_from_first_n() {
         let set = BitSetVec::from_first_n(65);
 
-        assert_eq!(65, set.len());
+        assert_eq!(65, set.count());
         assert_eq!(set.last(), Some(64));
         assert_eq!(set.into_inner(), [u64::MAX, 1]);
     }

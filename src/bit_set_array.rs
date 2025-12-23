@@ -999,7 +999,7 @@ pub mod tests {
     pub fn from_fn_4() {
         let evens = BitSetArray::<4>::from_fn(|x| x % 2 == 0);
 
-        assert_eq!(128, evens.len());
+        assert_eq!(128, evens.count());
         let iter = evens.into_iter();
         assert_eq!(iter.len(), 128);
 
@@ -1015,7 +1015,7 @@ pub mod tests {
 
         let set = BitSetArray::<4>::from_iter(expected.iter().copied());
 
-        assert_eq!(52, set.len());
+        assert_eq!(52, set.count());
 
         let iter = set.into_iter();
         assert_eq!(iter.len(), 52);
@@ -1034,7 +1034,7 @@ pub mod tests {
         let mut set = BitSetArray::<4>::from_iter(multiples_of_5.iter().copied());
         set.extend(multiples_of_4);
 
-        assert_eq!(103, set.len());
+        assert_eq!(103, set.count());
 
         let expected = BitSetArray::<4>::from_fn(|x| x % 4 == 0 || x % 5 == 0);
 
@@ -1805,7 +1805,7 @@ pub mod tests {
     fn test_from_first_n() {
         let set = BitSetArray::<4>::from_first_n(65);
 
-        assert_eq!(65, set.len());
+        assert_eq!(65, set.count());
         assert_eq!(set.last(), Some(64));
         assert_eq!(set.into_inner(), [u64::MAX, 1, 0, 0,]);
 

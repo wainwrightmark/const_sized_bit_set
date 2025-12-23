@@ -439,7 +439,7 @@ mod tests {
 
     #[test]
     fn test_bit_set16() {
-        assert_eq!(BitSet16::from_inner(0b1101).len(), 3);
+        assert_eq!(BitSet16::from_inner(0b1101).count(), 3);
 
         assert_eq!(
             BitSet16::from_inner(0b1101).with_inserted(1).into_inner(),

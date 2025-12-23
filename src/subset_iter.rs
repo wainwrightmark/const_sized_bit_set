@@ -47,8 +47,8 @@ impl<T: BitSet + Clone> core::iter::ExactSizeIterator for SubsetIter<T> {
                 excluded_set,
             } => {
                 let max = crate::n_choose_k::NChooseK::new(
-                    next_set.len() + excluded_set.len(),
-                    next_set.len(),
+                    next_set.count() + excluded_set.count(),
+                    next_set.count(),
                 )
                 .value();
 
@@ -157,7 +157,7 @@ impl<T: BitSet + Clone> Iterator for SubsetIter<T> {
         else {
             return None;
         };
-        let subset_size = next_set.len();
+        let subset_size = next_set.count();
         let mut superset = next_set;
         superset.union_with(&excluded_set);
         let index = superset.count_subsets(subset_size).saturating_sub(1);
@@ -181,7 +181,7 @@ impl<T: BitSet + Clone> Iterator for SubsetIter<T> {
         else {
             return None;
         };
-        let subset_size = next_set.len();
+        let subset_size = next_set.count();
         let superset = next_set.with_union(excluded_set);
         let subset_count = superset.count_subsets(subset_size);
         let next_set_index = superset.clone().index_of_subset(next_set);
