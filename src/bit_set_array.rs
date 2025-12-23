@@ -253,7 +253,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
 
     #[must_use]
     #[inline]
-    pub const fn len_const(&self) -> u32 {
+    pub const fn count_const(&self) -> u32 {
         let mut count: u32 = 0;
         let mut word = 0;
         while word < WORDS {
@@ -629,7 +629,7 @@ pub struct BitSetIter<const WORDS: usize> {
 
 impl<const WORDS: usize> ExactSizeIterator for BitSetIter<WORDS> {
     fn len(&self) -> usize {
-        self.inner.len_const() as usize
+        self.inner.count_const() as usize
     }
 }
 impl<const WORDS: usize> FusedIterator for BitSetIter<WORDS> {}
@@ -1047,7 +1047,7 @@ pub mod tests {
 
         let set = BitSetArray::<4>::from_iter(expected.iter().copied());
 
-        assert_eq!(52, set.len_const());
+        assert_eq!(52, set.count_const());
 
         let iter = set.into_iter();
         assert_eq!(iter.len(), 52);
@@ -1465,7 +1465,7 @@ pub mod tests {
     pub fn from_fn_1() {
         let evens = BitSetArray::<1>::from_fn(|x| x % 2 == 0);
 
-        assert_eq!(32, evens.len_const());
+        assert_eq!(32, evens.count_const());
         let iter = evens.into_iter();
         assert_eq!(iter.len(), 32);
 
@@ -1481,7 +1481,7 @@ pub mod tests {
 
         let set = BitSetArray::<1>::from_iter(expected.iter().copied());
 
-        assert_eq!(13, set.len_const());
+        assert_eq!(13, set.count_const());
 
         let iter = set.into_iter();
         assert_eq!(iter.len(), 13);
@@ -1498,7 +1498,7 @@ pub mod tests {
 
         let set = BitSetArray::<1>::from_iter(expected.iter().copied());
 
-        assert_eq!(13, set.len_const());
+        assert_eq!(13, set.count_const());
 
         let iter = set.into_iter();
         assert_eq!(iter.len(), 13);
@@ -1786,7 +1786,7 @@ pub mod tests {
             );
 
             for r in &results {
-                assert_eq!(r.len_const(), size, "Result should have the correct size");
+                assert_eq!(r.count_const(), size, "Result should have the correct size");
                 assert!(r.is_subset(&set), "Result should be a subset of the set");
             }
 

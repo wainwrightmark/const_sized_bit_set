@@ -26,7 +26,7 @@ macro_rules! define_bit_set_n {
             #[must_use]
             #[inline]
             #[doc(alias = "count")]
-            pub const fn len_const(&self) -> SetElement {
+            pub const fn count_const(&self) -> SetElement {
                 self.0.count_ones()
             }
 

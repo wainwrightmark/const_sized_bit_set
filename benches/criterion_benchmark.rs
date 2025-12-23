@@ -7,7 +7,7 @@ pub fn subset_iter_benchmark(c: &mut Criterion) {
     fn bitset_array_subsets_iter_func(initial_set: BitSetArray<4>, subset_size: u32) -> u32 {
         initial_set
             .iter_subsets(subset_size)
-            .map(|x| x.len_const())
+            .map(|x| x.count_const())
             .sum()
     }
 
@@ -44,7 +44,7 @@ pub fn subset_iter_benchmark(c: &mut Criterion) {
     fn bitset64_subsets_iter_func(initial_set: BitSet64, subset_size: u32) -> u32 {
         initial_set
             .iter_subsets(subset_size)
-            .map(|x| x.len_const())
+            .map(|x| x.count_const())
             .sum()
     }
 

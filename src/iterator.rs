@@ -28,7 +28,7 @@ macro_rules! impl_bit_set_iterator {
             }
             #[inline]
             fn size_hint(&self) -> (usize, Option<usize>) {
-                let c = self.0.len_const() as usize;
+                let c = self.0.count_const() as usize;
                 (c, Some(c))
             }
             #[inline]
@@ -63,7 +63,7 @@ macro_rules! impl_bit_set_iterator {
             }
             #[inline]
             fn nth(&mut self, n: usize) -> Option<Self::Item> {
-                if (self.0.len_const() as usize) <= n {
+                if (self.0.count_const() as usize) <= n {
                     self.0 = <$inner>::EMPTY;
                     return None;
                 }
@@ -156,7 +156,7 @@ macro_rules! impl_bit_set_iterator {
         }
 
         fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-            if (self.0.len_const() as usize) <= n {
+            if (self.0.count_const() as usize) <= n {
                 self.0 = <$inner>::EMPTY;
                 return None;
             }

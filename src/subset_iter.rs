@@ -262,7 +262,7 @@ mod tests {
 
         for bitset in 0..=u8::MAX {
             let bitset = BitSet8::from_inner_const(bitset);
-            for size in 1..=bitset.len_const() {
+            for size in 1..=bitset.count_const() {
                 let subsets = bitset.iter_subsets(size).collect::<Vec<_>>();
 
                 test_subsets(&subsets, bitset, size);

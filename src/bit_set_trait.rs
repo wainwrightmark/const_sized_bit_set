@@ -301,7 +301,7 @@ macro_rules! impl_bit_set_trait_methods {
         }
 
         fn count(&self) -> u32 {
-            self.len_const()
+            self.count_const()
         }
 
         fn into_inner(self) -> Self::Inner {
