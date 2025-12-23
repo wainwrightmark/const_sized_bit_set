@@ -6,7 +6,7 @@ pub trait BitSet: Sized {
     const EMPTY: Self;
 
     #[doc(alias = "count")]
-    fn len(&self) -> u32;//todo rename count
+    fn len(&self) -> u32; //todo rename count
 
     fn into_inner(self) -> Self::Inner;
     fn from_inner(inner: Self::Inner) -> Self;
@@ -213,11 +213,85 @@ pub trait BitSet: Sized {
     }
 
     #[must_use]
-    fn iter_subsets(self, subset_size: u32) -> impl ExactSizeIterator<Item = Self> + Clone + core::iter::FusedIterator
+    fn iter_subsets(
+        self,
+        subset_size: u32,
+    ) -> impl ExactSizeIterator<Item = Self> + Clone + core::iter::FusedIterator
     where
         Self: Clone,
     {
         crate::subset_iter::SubsetIter::new(self, subset_size)
+    }
+
+    #[must_use]
+    fn count_subsets(&self, subset_size: u32) -> u32 {
+        crate::n_choose_k::NChooseK::new(self.len(), subset_size).value()
+    }
+
+    #[must_use]
+    fn index_of_subset(self, subset: &Self) -> u32 {
+        let n_c_k = crate::n_choose_k::NChooseK::new(self.len(), subset.len());
+
+        let Some(mut n_c_k) = n_c_k.try_decrement_n() else {
+            return 0;
+        };
+
+        let mut total = 0;
+
+        //todo use iter() to remove clone requirement
+        let mut ss = self;
+        while let Some(index) = ss.pop_last() {
+            if subset.contains(index) {
+                total += n_c_k.value();
+                match n_c_k.try_decrement_k() {
+                    Some(r) => n_c_k = r,
+                    None => return total,
+                }
+            }
+            match n_c_k.try_decrement_n() {
+                Some(r) => n_c_k = r,
+                None => return total,
+            }
+        }
+
+        total
+    }
+
+    #[must_use]
+    fn get_subset(self, subset_size: u32, index: u32) -> Self {
+        let n_c_k = crate::n_choose_k::NChooseK::new(self.len(), subset_size);
+
+        // The rest of this algorithm calculates the the subsets in reverse order (i.e. index 0 is the largest subset)
+        // So reverse the order here to account for that
+        let mut index = n_c_k.value() - (index + 1 % n_c_k.value());
+        let mut new_set = Self::EMPTY;
+
+        let Some(mut n_c_k) = n_c_k.try_decrement_k().and_then(|x| x.try_decrement_n()) else {
+            return new_set;
+        };
+
+        let mut set_remaining = self;
+
+        while let Some(next) = set_remaining.pop_last() {
+            if let Some(new_index) = index.checked_sub(n_c_k.value()) {
+                index = new_index;
+            } else {
+                new_set.set_bit(next, true);
+                match n_c_k.try_decrement_k() {
+                    Some(r) => n_c_k = r,
+                    None => return new_set,
+                }
+            }
+            match n_c_k.try_decrement_n() {
+                Some(r) => n_c_k = r,
+                None => {
+                    new_set.union_with(&set_remaining);
+                    return new_set;
+                }
+            }
+        }
+
+        new_set
     }
 }
 

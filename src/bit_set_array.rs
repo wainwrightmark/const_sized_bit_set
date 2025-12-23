@@ -992,7 +992,6 @@ pub mod tests {
     use crate::bit_set_array::BitSetArray;
     use crate::bit_set_trait::BitSet;
     use crate::finite::FiniteBitSet;
-    use crate::n_choose_k;
     use crate::shiftable::ShiftableBitSet;
     use std::collections::BTreeSet;
 
@@ -1771,7 +1770,7 @@ pub mod tests {
 
         for size in 0u32..=5 {
             let iter = set.iter_subsets(size);
-            let expected_len = n_choose_k::subsets_count(&set, size);
+            let expected_len = set.count_subsets(size);
             let results: Vec<_> = iter.collect();
 
             assert_eq!(
