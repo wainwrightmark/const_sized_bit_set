@@ -1,10 +1,11 @@
 use crate::SetElement;
 use core::iter::FusedIterator;
+use core::num::Wrapping;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SliceIter<'a> {
     slice: &'a [u64],
-    elements_offset: SetElement,
+    elements_offset: Wrapping<SetElement>,
     first_chunk: u64,
     last_chunk: u64,
 }
@@ -15,9 +16,9 @@ const WORD_BITS: u32 = u64::BITS;
 #[must_use]
 const fn first_chunk_bit_to_element(
     element: SetElement,
-    elements_offset: SetElement,
+    elements_offset: Wrapping<SetElement>,
 ) -> SetElement {
-    element + elements_offset
+    element.wrapping_add(elements_offset.0)
 }
 
 #[inline]
@@ -25,27 +26,24 @@ const fn first_chunk_bit_to_element(
 #[expect(clippy::cast_possible_truncation)]
 const fn last_chunk_bit_to_element(
     element: SetElement,
-    elements_offset: SetElement,
+    elements_offset: Wrapping<SetElement>,
     slice: &[u64],
 ) -> SetElement {
-    element + elements_offset + (WORD_BITS * (slice.len() as u32 + 1))
+    element
+        .wrapping_add(elements_offset.0)
+        .wrapping_add(WORD_BITS * (slice.len() as u32 + 1))
 }
 
 impl<'a> SliceIter<'a> {
     pub const fn new(slice: &'a [u64]) -> Self {
-        match slice.split_first() {
-            Some((&first_chunk, remaining_slice)) => Self {
-                slice: remaining_slice,
-                elements_offset: 0,
-                first_chunk,
-                last_chunk: 0,
-            },
-            None => Self {
-                slice,
-                elements_offset: 0,
-                first_chunk: 0,
-                last_chunk: 0,
-            },
+        // We start with empty first and last chunks and the elements offset set one word before zero.
+        // This means that when reading exclusively forward or exclusively back (the most common case), the other chunk is never populated.
+        // This significantly reduces branch misprediction when reading the final chunk (especially in the backward direction)
+        Self {
+            slice,
+            elements_offset: Wrapping(0u32.wrapping_sub(WORD_BITS)),
+            first_chunk: 0,
+            last_chunk: 0,
         }
     }
 
@@ -54,7 +52,7 @@ impl<'a> SliceIter<'a> {
             Some((new_first_chunk, new_slice)) => {
                 self.first_chunk = *new_first_chunk;
                 self.slice = new_slice;
-                self.elements_offset += WORD_BITS;
+                self.elements_offset.0 = self.elements_offset.0.wrapping_add(WORD_BITS);
                 Some(())
             }
             None => {
@@ -63,7 +61,7 @@ impl<'a> SliceIter<'a> {
                 } else {
                     self.first_chunk = self.last_chunk;
                     self.last_chunk = 0;
-                    self.elements_offset += WORD_BITS;
+                    self.elements_offset.0 = self.elements_offset.0.wrapping_add(WORD_BITS);
                     Some(())
                 }
             }
@@ -136,9 +134,9 @@ impl<'a> Iterator for SliceIter<'a> {
         let mut total = 0u32;
         let mut multiplier = self.elements_offset;
 
-        fn increase_total(word: u64, total: &mut u32, mut multiplier: u32) {
+        fn increase_total(word: u64, total: &mut u32, mut multiplier: Wrapping<u32>) {
             if word == u64::MAX {
-                *total += word.count_ones() * multiplier;
+                *total += word.count_ones() * multiplier.0;
                 *total += 2016; //sum of 0..64
             } else {
                 let mut value = word;
@@ -150,7 +148,7 @@ impl<'a> Iterator for SliceIter<'a> {
                     let ones = value.trailing_ones(); //there must be some or we wouldn't have shifted right
                     value >>= ones; //cannot overflow as we checked for u64::MAX
 
-                    *total += (ones * (ones + multiplier + multiplier - 1)) / 2;
+                    *total += (ones * (ones + multiplier.0 + multiplier.0 - 1)) / 2;
 
                     multiplier += ones;
                 }
@@ -183,7 +181,7 @@ impl<'a> Iterator for SliceIter<'a> {
             let mut offset = offset1;
             let mut word = *word;
             if word == u64::MAX {
-                for v in offset..(offset + (WORD_BITS)) {
+                for v in offset.0..(offset + (Wrapping(WORD_BITS))).0 {
                     accum = f(accum, v);
                 }
             } else {
@@ -193,7 +191,7 @@ impl<'a> Iterator for SliceIter<'a> {
                     offset += tz;
                     let trailing_ones = word.trailing_ones();
                     for _ in 0..trailing_ones {
-                        accum = f(accum, offset);
+                        accum = f(accum, offset.0);
                         offset += 1;
                     }
                     word >>= trailing_ones;
@@ -282,7 +280,7 @@ impl<'a> DoubleEndedIterator for SliceIter<'a> {
         #[expect(clippy::cast_possible_truncation)]
         let mut n = n as u32;
 
-        let (chunk, offset): (&mut u64, u32) = 'l: loop {
+        let (chunk, offset): (&mut u64, Wrapping<u32>) = 'l: loop {
             if self.last_chunk == 0 {
                 match self.slice.split_last() {
                     Some((new_last_chunk, new_slice)) => {
@@ -310,7 +308,8 @@ impl<'a> DoubleEndedIterator for SliceIter<'a> {
                     None => {
                         break 'l (
                             &mut self.last_chunk,
-                            (self.elements_offset + ((self.slice.len() as u32 + 1) * WORD_BITS)),
+                            (self.elements_offset
+                                + Wrapping((self.slice.len() as u32 + 1) * WORD_BITS)),
                         );
                     }
                 }
@@ -332,7 +331,7 @@ impl<'a> DoubleEndedIterator for SliceIter<'a> {
                 shift += leading_ones;
             } else {
                 *chunk <<= n + 1;
-                let r = (WORD_BITS - (shift + n + 1)) + offset;
+                let r = (WORD_BITS - (shift + n + 1)).wrapping_add(offset.0);
 
                 *chunk = chunk.wrapping_shr(shift + n + 1);
 
@@ -347,7 +346,8 @@ impl<'a> DoubleEndedIterator for SliceIter<'a> {
         F: FnMut(B, Self::Item) -> B,
     {
         let mut accum = init;
-        let mut offset1 = self.elements_offset + ((2 + self.slice.len() as u32) * WORD_BITS);
+        let mut offset1 =
+            self.elements_offset + Wrapping((2 + self.slice.len() as u32) * WORD_BITS);
         for word in [self.first_chunk]
             .iter()
             .chain(self.slice)
@@ -358,7 +358,7 @@ impl<'a> DoubleEndedIterator for SliceIter<'a> {
             let mut word = *word;
 
             if word == u64::MAX {
-                for v in ((offset - (WORD_BITS))..offset).rev() {
+                for v in ((offset - Wrapping(WORD_BITS)).0..offset.0).rev() {
                     accum = f(accum, v);
                 }
             } else {
@@ -369,7 +369,7 @@ impl<'a> DoubleEndedIterator for SliceIter<'a> {
                     let leading_ones = word.leading_ones();
                     for _ in 0..leading_ones {
                         offset -= 1;
-                        accum = f(accum, offset);
+                        accum = f(accum, offset.0);
                     }
                     word <<= leading_ones;
                 }
@@ -383,7 +383,6 @@ impl<'a> DoubleEndedIterator for SliceIter<'a> {
 #[cfg(test)]
 mod tests {
     use crate::prelude::*;
-
 
     #[test]
     fn test_both_directions() {
@@ -404,5 +403,26 @@ mod tests {
         }
 
         assert_eq!(v, vec![0, 250, 50, 200, 100, 150])
+    }
+    #[test]
+    fn test_both_directions2() {
+        let arr = BitSetArray::<4>::from_fn(|x| x % 50 == 0);
+        let mut iter = arr.iter();
+
+        let mut v = vec![];
+
+        loop {
+            let Some(next_back) = iter.next_back() else {
+                break;
+            };
+            v.push(next_back);
+
+            let Some(next) = iter.next() else {
+                break;
+            };
+            v.push(next);
+        }
+
+        assert_eq!(v, vec![250, 0, 200, 50, 150, 100])
     }
 }
