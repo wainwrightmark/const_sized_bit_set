@@ -121,6 +121,12 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
         self.eq(&Self::ALL)
     }
 
+    #[must_use]
+    #[inline]
+    pub const fn clear_const(&mut self) {
+        self.0 = Self::EMPTY.0;
+    }
+
     /// Create a set of the elements 0..n
     #[must_use]
     #[inline]

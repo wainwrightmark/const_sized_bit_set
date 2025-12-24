@@ -16,6 +16,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(any(test, feature = "serde"), derive(Serialize, Deserialize))]
 pub struct BitSetVec(Vec<u64>);
+//todo enforce that the inner vector never has extra zeros at the end
 
 impl core::fmt::Display for BitSetVec {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
@@ -116,6 +117,10 @@ impl BitSet for BitSetVec {
 
     fn count(&self) -> u32 {
         self.0.iter().map(|x| x.count_ones()).sum()
+    }
+
+    fn clear(&mut self) {
+        self.0.clear();
     }
 
     fn into_inner(self) -> Self::Inner {

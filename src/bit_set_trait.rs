@@ -15,6 +15,8 @@ pub trait BitSet: Sized {
     fn from_first_n(n: u32) -> Self;
 
     fn is_empty(&self) -> bool;
+    
+    fn clear(&mut self);
 
     fn contains(&self, element: SetElement) -> bool;
 
@@ -308,6 +310,10 @@ macro_rules! impl_bit_set_trait_methods {
 
         fn count(&self) -> u32 {
             self.count_const()
+        }
+
+        fn clear(&mut self){
+            self.clear_const()
         }
 
         fn into_inner(self) -> Self::Inner {

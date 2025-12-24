@@ -28,6 +28,12 @@ macro_rules! define_bit_set_n {
                 self.0 == Self::ALL.0
             }
 
+            #[must_use]
+            #[inline]
+            pub const fn clear_const(&mut self){
+                self.0 = Self::EMPTY.0;
+            }
+
             /// Returns the number of elements in the set
             #[must_use]
             #[inline]
