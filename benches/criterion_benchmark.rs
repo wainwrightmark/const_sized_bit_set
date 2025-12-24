@@ -194,19 +194,11 @@ pub fn nth_benchmark(c: &mut Criterion) {
     });
 
     c.bench_function("nth_all", |b| {
-        b.iter(|| {
-            black_box(BitSetArray::<4>::ALL)
-                .iter()
-                .nth(black_box(100))
-        });
+        b.iter(|| black_box(BitSetArray::<4>::ALL).iter().nth(black_box(100)));
     });
 
     c.bench_function("nth_back_half", |b| {
-        b.iter(|| {
-            black_box(HALF_EMPTY_SET)
-                .iter()
-                .nth_back(black_box(10))
-        });
+        b.iter(|| black_box(HALF_EMPTY_SET).iter().nth_back(black_box(10)));
     });
 
     c.bench_function("nth_back_all", |b| {
@@ -227,7 +219,6 @@ criterion_group!(
     sum_benchmark,
     from_fn_benchmark,
     sum_all_back_benchmark,
-    
 );
 criterion_main!(benches);
 

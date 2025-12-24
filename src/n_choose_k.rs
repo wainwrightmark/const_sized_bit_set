@@ -110,7 +110,7 @@ mod tests {
         for (index, subset) in superset.iter_subsets(3).enumerate() {
             let expected = superset.get_subset(3, index as u32);
 
-            assert_eq!(subset, expected)
+            assert_eq!(subset, expected);
         }
     }
 
@@ -122,7 +122,7 @@ mod tests {
             for index in 0..n {
                 let subset = superset.get_subset(subset_size, index);
                 let subset_index = superset.index_of_subset(&subset);
-                assert_eq!(index, subset_index)
+                assert_eq!(index, subset_index);
             }
         }
     }

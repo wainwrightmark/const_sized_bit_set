@@ -162,7 +162,7 @@ impl<T: BitSet + Clone> Iterator for SubsetIter<T> {
         superset.union_with(&excluded_set);
         let index = superset.count_subsets(subset_size).saturating_sub(1);
         let last_set = superset.get_subset(subset_size, index);
-        return Some(last_set);
+        Some(last_set)
     }
 
     fn max(self) -> Option<Self::Item>
@@ -172,7 +172,7 @@ impl<T: BitSet + Clone> Iterator for SubsetIter<T> {
     {
         self.last()
     }
-
+    #[expect(clippy::cast_possible_truncation)]
     fn nth(&mut self, n: usize) -> Option<Self::Item> {
         let SubsetIter::Unfinished {
             next_set,
@@ -187,11 +187,11 @@ impl<T: BitSet + Clone> Iterator for SubsetIter<T> {
         let next_set_index = superset.clone().index_of_subset(next_set);
         let nth_set_index = next_set_index + n as u32;
         if nth_set_index >= subset_count {
-            *self = Self::Finished
+            *self = Self::Finished;
         } else {
             *next_set = superset.clone().get_subset(subset_size, nth_set_index);
             let mut superset = superset;
-            superset.except_with(&next_set);
+            superset.except_with(next_set);
             *excluded_set = superset;
         }
 
@@ -284,7 +284,11 @@ mod tests {
             for second_index in 0..s {
                 let mut iter = iter.clone();
                 let b = iter.nth(second_index);
-                assert_eq!(b, collected.get(first_index + 1+ second_index).copied(), "F:{first_index} S: {second_index}");
+                assert_eq!(
+                    b,
+                    collected.get(first_index + 1 + second_index).copied(),
+                    "F:{first_index} S: {second_index}"
+                );
             }
         }
     }
@@ -449,19 +453,19 @@ mod tests {
             expected_count -= 1;
         }
 
-        assert_eq!(expected_count, 0)
+        assert_eq!(expected_count, 0);
     }
 
     #[test]
-    pub fn test_is_sorted(){
+    pub fn test_is_sorted() {
         let iter = BitSet8::from_inner(0b11101111).iter_subsets(3);
         assert!(iter.clone().is_sorted());
         assert!(iter.collect::<Vec<_>>().into_iter().is_sorted());
     }
 
     #[test]
-    pub fn test_min(){
+    pub fn test_min() {
         let iter = BitSet8::from_inner(0b11101111).iter_subsets(3);
-        assert_eq!(iter.min(), Some(BitSet8::from_inner_const(0b111)) ); 
+        assert_eq!(iter.min(), Some(BitSet8::from_inner_const(0b111)));
     }
 }

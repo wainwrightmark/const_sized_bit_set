@@ -164,6 +164,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
         false
     }
 
+    #[must_use]
     pub const fn iter_const(&self) -> SliceIter {
         SliceIter::new(&self.0)
     }
@@ -590,6 +591,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
         }
     }
 
+    #[must_use]
     pub const fn trailing_ones_const(&self) -> u32 {
         let mut total = 0;
         let mut i = 0;
@@ -1172,12 +1174,11 @@ pub mod tests {
             assert_eq!(expected, actual);
         }
     }
-    
-    
+
     #[test]
     fn test_iter_nth_back_empty() {
         let set = BitSetArray::<4>::EMPTY;
-        assert_eq!(set.iter().nth_back(100), None)
+        assert_eq!(set.iter().nth_back(100), None);
     }
 
     #[test]
@@ -1835,14 +1836,13 @@ pub mod tests {
 
         let expected = BitSetArray::<4>::from_fn(|x| x % 6 == 0);
 
-        assert_eq!(set, expected)
+        assert_eq!(set, expected);
     }
 
     #[test]
     fn test_clear() {
         let mut set = BitSetArray::<4>::from_fn(|x| x % 2 == 0);
         set.clear_const();
-        assert!(set.is_empty_const())
+        assert!(set.is_empty_const());
     }
-
 }

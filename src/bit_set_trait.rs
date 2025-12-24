@@ -30,9 +30,9 @@ pub trait BitSet: Sized {
 
     fn pop_last(&mut self) -> Option<SetElement>;
 
-    fn iter<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = SetElement> + Clone + FusedIterator + DoubleEndedIterator + ExactSizeIterator;
+    fn iter(
+        &self,
+    ) -> impl Clone + FusedIterator<Item = SetElement> + DoubleEndedIterator + ExactSizeIterator;
 
     /// Sets the `element` to `bit`.
     /// Returns whether the element was changed
@@ -275,17 +275,16 @@ pub trait BitSet: Sized {
                     None => return new_set,
                 }
             }
-            match n_c_k.try_decrement_n() {
-                Some(r) => n_c_k = r,
-                None => {
-                    //todo do union here
-                    iter.fold(&mut new_set, |acc, x| {
-                        acc.insert(x);
-                        acc
-                    });
+            if let Some(r) = n_c_k.try_decrement_n() {
+                n_c_k = r
+            } else {
+                //todo do union here
+                iter.fold(&mut new_set, |acc, x| {
+                    acc.insert(x);
+                    acc
+                });
 
-                    return new_set;
-                }
+                return new_set;
             }
         }
 
@@ -403,13 +402,10 @@ macro_rules! impl_bit_set_trait_methods {
             self.trailing_ones_const()
         }
 
-        fn iter<'a>(
-            &'a self,
-        ) -> impl Iterator<Item = SetElement>
-        + Clone
-        + FusedIterator
-        + DoubleEndedIterator
-        + ExactSizeIterator {
+        fn iter(
+            &self,
+        ) -> impl Clone + FusedIterator<Item = SetElement> + DoubleEndedIterator + ExactSizeIterator
+        {
             self.iter_const()
         }
     };
@@ -448,18 +444,18 @@ impl<const WORDS: usize> BitSet for crate::prelude::BitSetArray<WORDS> {
     const EMPTY: Self = Self::EMPTY;
 
     impl_bit_set_trait_methods!();
-
-    fn retain<F>(&mut self,mut f: F)
+    #[allow(clippy::cast_possible_truncation)]
+    fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(&SetElement) -> bool,
     {
         let mut word_index = 0;
-        while let Some(word) = self.0.get_mut(word_index){
-            let w = word.clone();
+        while let Some(word) = self.0.get_mut(word_index) {
+            let w = *word;
             let offset = word_index as u32 * u64::BITS;
-            for element_index in BitSet64::from_inner_const(w).iter_const(){
-                if !f(&(element_index + offset)){
-                    crate::mutate_inner(word, |w|w.remove_const(element_index));
+            for element_index in BitSet64::from_inner_const(w).iter_const() {
+                if !f(&(element_index + offset)) {
+                    crate::mutate_inner(word, |w| w.remove_const(element_index));
                 }
             }
             word_index += 1;

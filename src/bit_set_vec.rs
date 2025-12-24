@@ -181,9 +181,9 @@ impl BitSet for BitSetVec {
         None
     }
 
-    fn iter<'a>(
-        &'a self,
-    ) -> impl Iterator<Item = SetElement> + Clone + FusedIterator + DoubleEndedIterator + ExactSizeIterator
+    fn iter(
+        &self,
+    ) -> impl Clone + FusedIterator<Item = SetElement> + DoubleEndedIterator + ExactSizeIterator
     {
         SliceIter::new(&self.0)
     }
@@ -376,7 +376,7 @@ impl BitSet for BitSetVec {
 
     fn trailing_ones(&self) -> u32 {
         let mut total = 0;
-        for x in self.0.iter() {
+        for x in &self.0 {
             if *x == u64::MAX {
                 total += u64::BITS;
             } else {
@@ -384,7 +384,7 @@ impl BitSet for BitSetVec {
                 return total;
             }
         }
-        return total;
+        total
     }
 
     fn retain<F>(&mut self, mut f: F)
@@ -394,7 +394,7 @@ impl BitSet for BitSetVec {
         let mut word_index = 0;
         while let Some(word) = self.0.get_mut(word_index) {
             let offset = word_index as u32 * WORD_BITS;
-            for element_index in BitSet64::from_inner_const(word.clone()).iter_const() {
+            for element_index in BitSet64::from_inner_const(*word).iter_const() {
                 if !f(&(element_index + offset)) {
                     crate::mutate_inner(word, |w| w.remove_const(element_index));
                 }
@@ -1383,13 +1383,13 @@ pub mod tests {
 
         let expected = BitSetVec::from_fn(256, |x| x % 6 == 0);
 
-        assert_eq!(set, expected)
+        assert_eq!(set, expected);
     }
 
     #[test]
     fn test_clear() {
         let mut set = BitSetVec::from_fn(256, |x| x % 2 == 0);
         set.clear();
-        assert!(set.is_empty())
+        assert!(set.is_empty());
     }
 }

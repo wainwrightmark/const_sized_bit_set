@@ -14,8 +14,6 @@ pub trait ShiftableBitSet: BitSet {
 macro_rules! impl_bit_set_shiftable {
     ($name:ident) => {
         impl ShiftableBitSet for $name {
-           
-
             fn shift_right(&mut self, n: SetElement) {
                 *self = Self::from_inner(self.into_inner_const() >> n)
             }

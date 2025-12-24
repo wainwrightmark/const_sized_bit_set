@@ -3,7 +3,7 @@ use core::iter::FusedIterator;
 use crate::{SetElement, finite::FiniteBitSet, prelude::BitSet, shiftable::ShiftableBitSet};
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct BitSetIterator<Inner: BitSet + ShiftableBitSet + FiniteBitSet>( Inner);
+pub struct BitSetIterator<Inner: BitSet + ShiftableBitSet + FiniteBitSet>(Inner);
 
 impl<Inner: BitSet + ShiftableBitSet + FiniteBitSet> BitSetIterator<Inner> {
     pub const fn new(inner: Inner) -> Self {
@@ -137,10 +137,9 @@ impl<Inner: BitSet + ShiftableBitSet + FiniteBitSet> Iterator for BitSetIterator
     }
 }
 
-impl<Inner: BitSet + ShiftableBitSet + FiniteBitSet> ExactSizeIterator for BitSetIterator<Inner>{}
-impl<Inner: BitSet + ShiftableBitSet + FiniteBitSet> FusedIterator for BitSetIterator<Inner>{}
-impl<Inner: BitSet + ShiftableBitSet + FiniteBitSet> DoubleEndedIterator for BitSetIterator<Inner>{
-
+impl<Inner: BitSet + ShiftableBitSet + FiniteBitSet> ExactSizeIterator for BitSetIterator<Inner> {}
+impl<Inner: BitSet + ShiftableBitSet + FiniteBitSet> FusedIterator for BitSetIterator<Inner> {}
+impl<Inner: BitSet + ShiftableBitSet + FiniteBitSet> DoubleEndedIterator for BitSetIterator<Inner> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.0.pop_last()
     }

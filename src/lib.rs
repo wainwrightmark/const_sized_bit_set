@@ -30,9 +30,8 @@ pub mod prelude {
     pub use crate::shiftable::ShiftableBitSet;
 }
 
-
 #[inline]
-pub (crate) fn mutate_inner<R>(inner: &mut u64, f: impl FnOnce(&mut BitSet64) -> R) -> R {
+pub(crate) fn mutate_inner<R>(inner: &mut u64, f: impl FnOnce(&mut BitSet64) -> R) -> R {
     let mut set = BitSet64::from_inner_const(*inner);
     let result = f(&mut set);
     *inner = set.into_inner_const();

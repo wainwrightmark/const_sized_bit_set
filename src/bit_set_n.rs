@@ -18,18 +18,18 @@ macro_rules! define_bit_set_n {
 
             #[must_use]
             #[inline]
-            pub const fn is_empty_const(&self)-> bool{
+            pub const fn is_empty_const(&self) -> bool {
                 self.0 == 0
             }
-            
+
             #[must_use]
             #[inline]
-            pub const fn is_all_const(&self)-> bool{
+            pub const fn is_all_const(&self) -> bool {
                 self.0 == Self::ALL.0
             }
 
             #[inline]
-            pub const fn clear_const(&mut self){
+            pub const fn clear_const(&mut self) {
                 self.0 = Self::EMPTY.0;
             }
 
@@ -337,11 +337,13 @@ macro_rules! define_bit_set_n {
                 return Some(index - 1 - inner.leading_zeros());
             }
 
-            pub const fn iter_const(&self)-> crate::iterator::BitSetIterator<Self> {
+            #[must_use]
+            pub const fn iter_const(&self) -> crate::iterator::BitSetIterator<Self> {
                 crate::iterator::BitSetIterator::new(*self)
             }
 
-            pub const fn trailing_ones_const(&self)-> u32{
+            #[must_use]
+            pub const fn trailing_ones_const(&self) -> u32 {
                 self.0.trailing_ones()
             }
         }
@@ -667,26 +669,26 @@ mod tests {
     }
 
     #[test]
-    fn test_retain(){
+    fn test_retain() {
         let mut set = BitSet128::from_fn(|x| x % 2 == 0);
         let mut c = 0;
-        set.retain(|e|{
+        set.retain(|e| {
             c += e;
-            e % 3 ==0
+            e % 3 == 0
         });
 
         assert_eq!(c, 4032);
 
-        let expected =  BitSet128::from_fn(|x| x % 6 == 0);
+        let expected = BitSet128::from_fn(|x| x % 6 == 0);
 
-        assert_eq!(set, expected)
+        assert_eq!(set, expected);
     }
 
     #[test]
-    fn test_clear(){
+    fn test_clear() {
         let mut set = BitSet128::from_fn(|x| x % 2 == 0);
         set.clear_const();
-        assert!(set.is_empty_const())
+        assert!(set.is_empty_const());
     }
 
     #[test]

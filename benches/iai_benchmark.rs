@@ -62,9 +62,7 @@ fn sum_all_elements_next_back(set: BitSetArray<4>) -> u32 {
 #[bench::empty(EMPTY_SET)]
 #[bench::random(RANDOM_SET)]
 fn sum_all_elements_fold(set: BitSetArray<4>) -> u32 {
-    black_box(set)
-        .iter()
-        .fold(0, |acc, x| acc.wrapping_add(x))
+    black_box(set).iter().fold(0, |acc, x| acc.wrapping_add(x))
 }
 
 #[library_benchmark]
@@ -73,9 +71,7 @@ fn sum_all_elements_fold(set: BitSetArray<4>) -> u32 {
 #[bench::empty(EMPTY_SET)]
 #[bench::random(RANDOM_SET)]
 fn sum_all_elements_rfold(set: BitSetArray<4>) -> u32 {
-    black_box(set)
-        .iter()
-        .rfold(0, |acc, x| acc.wrapping_add(x))
+    black_box(set).iter().rfold(0, |acc, x| acc.wrapping_add(x))
 }
 
 #[library_benchmark]

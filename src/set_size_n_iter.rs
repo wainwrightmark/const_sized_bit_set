@@ -5,7 +5,10 @@ pub struct SetSizeNIter<T: BitSet + ShiftableBitSet + FiniteBitSet + Clone> {
     next_set: T,
 }
 
-impl<T: BitSet + ShiftableBitSet + FiniteBitSet + Clone> core::iter::FusedIterator for SetSizeNIter<T> {}
+impl<T: BitSet + ShiftableBitSet + FiniteBitSet + Clone> core::iter::FusedIterator
+    for SetSizeNIter<T>
+{
+}
 
 impl<T: BitSet + ShiftableBitSet + FiniteBitSet + Clone> Iterator for SetSizeNIter<T> {
     type Item = T;

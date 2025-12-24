@@ -35,6 +35,7 @@ const fn last_chunk_bit_to_element(
 }
 
 impl<'a> SliceIter<'a> {
+    #[must_use]
     pub const fn new(slice: &'a [u64]) -> Self {
         // We start with empty first and last chunks and the elements offset set one word before zero.
         // This means that when reading exclusively forward or exclusively back (the most common case), the other chunk is never populated.
@@ -57,7 +58,7 @@ impl<'a> SliceIter<'a> {
             }
             None => {
                 if self.last_chunk == 0 {
-                    return None;
+                    None
                 } else {
                     self.first_chunk = self.last_chunk;
                     self.last_chunk = 0;
@@ -71,13 +72,14 @@ impl<'a> SliceIter<'a> {
     //todo const functions e.g. next
 }
 
-impl<'a> Iterator for SliceIter<'a> {
+impl Iterator for SliceIter<'_> {
     type Item = SetElement;
 
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            match crate::mutate_inner(&mut self.first_chunk, |x| x.pop_const()) {
+            match crate::mutate_inner(&mut self.first_chunk, super::bit_set_n::BitSet64::pop_const)
+            {
                 Some(element) => {
                     return Some(first_chunk_bit_to_element(element, self.elements_offset));
                 }
@@ -131,9 +133,6 @@ impl<'a> Iterator for SliceIter<'a> {
         Self: Sized,
         S: core::iter::Sum<Self::Item>,
     {
-        let mut total = 0u32;
-        let mut multiplier = self.elements_offset;
-
         fn increase_total(word: u64, total: &mut u32, mut multiplier: Wrapping<u32>) {
             if word == u64::MAX {
                 *total += word.count_ones() * multiplier.0;
@@ -154,6 +153,9 @@ impl<'a> Iterator for SliceIter<'a> {
                 }
             }
         }
+
+        let mut total = 0u32;
+        let mut multiplier = self.elements_offset;
         increase_total(self.first_chunk, &mut total, multiplier);
         multiplier += WORD_BITS;
         for chunk in self.slice {
@@ -211,48 +213,47 @@ impl<'a> Iterator for SliceIter<'a> {
             if self.first_chunk == 0 {
                 self.advance_first_chunk()?;
             }
-            match n.checked_sub(self.first_chunk.count_ones()) {
-                Some(new_n) => {
-                    n = new_n;
-                    self.advance_first_chunk()?
-                }
-                None => {
-                    let mut shift = 0;
-                    loop {
-                        let tz = self.first_chunk.trailing_zeros();
-                        self.first_chunk >>= tz;
-                        shift += tz;
-                        let to = self.first_chunk.trailing_ones();
-                        if let Some(new_n) = n.checked_sub(to) {
-                            n = new_n;
-                            self.first_chunk >>= to;
-                            shift += to;
-                        } else {
-                            self.first_chunk >>= n + 1;
-                            #[expect(clippy::cast_possible_truncation)]
-                            let r = first_chunk_bit_to_element(shift + n, self.elements_offset);
-                            self.first_chunk = self.first_chunk.wrapping_shl(shift + n + 1);
+            if let Some(new_n) = n.checked_sub(self.first_chunk.count_ones()) {
+                n = new_n;
+                self.advance_first_chunk()?;
+            } else {
+                let mut shift = 0;
+                loop {
+                    let tz = self.first_chunk.trailing_zeros();
+                    self.first_chunk >>= tz;
+                    shift += tz;
+                    let to = self.first_chunk.trailing_ones();
+                    if let Some(new_n) = n.checked_sub(to) {
+                        n = new_n;
+                        self.first_chunk >>= to;
+                        shift += to;
+                    } else {
+                        self.first_chunk >>= n + 1;
+                        let r = first_chunk_bit_to_element(shift + n, self.elements_offset);
+                        self.first_chunk = self.first_chunk.wrapping_shl(shift + n + 1);
 
-                            return Some(r);
-                        }
+                        return Some(r);
                     }
                 }
             }
         }
     }
 }
-impl<'a> FusedIterator for SliceIter<'a> {}
-impl<'a> ExactSizeIterator for SliceIter<'a> {
+impl FusedIterator for SliceIter<'_> {}
+impl ExactSizeIterator for SliceIter<'_> {
     fn len(&self) -> usize {
         (self.first_chunk.count_ones()
             + self.last_chunk.count_ones()
             + self.slice.iter().map(|x| x.count_ones()).sum::<u32>()) as usize
     }
 }
-impl<'a> DoubleEndedIterator for SliceIter<'a> {
+impl DoubleEndedIterator for SliceIter<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
         loop {
-            match crate::mutate_inner(&mut self.last_chunk, |x| x.pop_last_const()) {
+            match crate::mutate_inner(
+                &mut self.last_chunk,
+                super::bit_set_n::BitSet64::pop_last_const,
+            ) {
                 Some(element) => {
                     return Some(last_chunk_bit_to_element(
                         element,
@@ -266,18 +267,18 @@ impl<'a> DoubleEndedIterator for SliceIter<'a> {
                         self.slice = new_slice;
                     }
                     None => {
-                        return crate::mutate_inner(&mut self.first_chunk, |x| x.pop_last_const())
-                            .map(|element| {
-                                first_chunk_bit_to_element(element, self.elements_offset)
-                            });
+                        return crate::mutate_inner(
+                            &mut self.first_chunk,
+                            super::bit_set_n::BitSet64::pop_last_const,
+                        )
+                        .map(|element| first_chunk_bit_to_element(element, self.elements_offset));
                     }
                 },
             }
         }
     }
-
+    #[expect(clippy::cast_possible_truncation)]
     fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-        #[expect(clippy::cast_possible_truncation)]
         let mut n = n as u32;
 
         let (chunk, offset): (&mut u64, Wrapping<u32>) = 'l: loop {
@@ -339,7 +340,7 @@ impl<'a> DoubleEndedIterator for SliceIter<'a> {
             }
         }
     }
-
+    #[expect(clippy::cast_possible_truncation)]
     fn rfold<B, F>(self, init: B, mut f: F) -> B
     where
         Self: Sized,
@@ -402,7 +403,7 @@ mod tests {
             v.push(next_back);
         }
 
-        assert_eq!(v, vec![0, 250, 50, 200, 100, 150])
+        assert_eq!(v, vec![0, 250, 50, 200, 100, 150]);
     }
     #[test]
     fn test_both_directions2() {
@@ -423,6 +424,6 @@ mod tests {
             v.push(next);
         }
 
-        assert_eq!(v, vec![250, 0, 200, 50, 150, 100])
+        assert_eq!(v, vec![250, 0, 200, 50, 150, 100]);
     }
 }
