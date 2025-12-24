@@ -318,6 +318,7 @@ impl<'a> DoubleEndedIterator for SliceIter<'a> {
 
         let mut shift = 0;
         loop {
+            if *chunk == 0{return None;}
             let lz = chunk.leading_zeros();
             *chunk <<= lz;
             shift += lz;

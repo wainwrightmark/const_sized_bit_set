@@ -1172,6 +1172,13 @@ pub mod tests {
             assert_eq!(expected, actual);
         }
     }
+    
+    
+    #[test]
+    fn test_iter_nth_back_empty() {
+        let set = BitSetArray::<4>::EMPTY;
+        assert_eq!(set.iter().nth_back(100), None)
+    }
 
     #[test]
     fn test_iter_fold4() {
@@ -1837,4 +1844,5 @@ pub mod tests {
         set.clear_const();
         assert!(set.is_empty_const())
     }
+
 }

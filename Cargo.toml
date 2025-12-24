@@ -22,8 +22,8 @@ serde_arrays = { version = "0.2", optional = true }
 serde = { version = "1.0", features = ["derive"] }
 serde_arrays = { version = "0.2" }
 serde_test = "1.0"
-iai-callgrind = "0.10.2"
-criterion = "0.5"
+iai-callgrind = "0.16"
+criterion = "0.7"
 
 [profile.bench]
 debug = true
