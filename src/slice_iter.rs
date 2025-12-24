@@ -79,7 +79,7 @@ impl<'a> Iterator for SliceIter<'a> {
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            match crate:: mutate_inner(&mut self.first_chunk, |x| x.pop_const()) {
+            match crate::mutate_inner(&mut self.first_chunk, |x| x.pop_const()) {
                 Some(element) => {
                     return Some(first_chunk_bit_to_element(element, self.elements_offset));
                 }
@@ -268,9 +268,10 @@ impl<'a> DoubleEndedIterator for SliceIter<'a> {
                         self.slice = new_slice;
                     }
                     None => {
-                        return crate::mutate_inner(&mut self.first_chunk, |x| x.pop_last_const()).map(
-                            |element| first_chunk_bit_to_element(element, self.elements_offset),
-                        );
+                        return crate::mutate_inner(&mut self.first_chunk, |x| x.pop_last_const())
+                            .map(|element| {
+                                first_chunk_bit_to_element(element, self.elements_offset)
+                            });
                     }
                 },
             }
@@ -318,7 +319,9 @@ impl<'a> DoubleEndedIterator for SliceIter<'a> {
 
         let mut shift = 0;
         loop {
-            if *chunk == 0{return None;}
+            if *chunk == 0 {
+                return None;
+            }
             let lz = chunk.leading_zeros();
             *chunk <<= lz;
             shift += lz;
@@ -374,5 +377,32 @@ impl<'a> DoubleEndedIterator for SliceIter<'a> {
             offset1 -= WORD_BITS;
         }
         accum
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::prelude::*;
+
+
+    #[test]
+    fn test_both_directions() {
+        let arr = BitSetArray::<4>::from_fn(|x| x % 50 == 0);
+        let mut iter = arr.iter();
+
+        let mut v = vec![];
+
+        loop {
+            let Some(next) = iter.next() else {
+                break;
+            };
+            v.push(next);
+            let Some(next_back) = iter.next_back() else {
+                break;
+            };
+            v.push(next_back);
+        }
+
+        assert_eq!(v, vec![0, 250, 50, 200, 100, 150])
     }
 }

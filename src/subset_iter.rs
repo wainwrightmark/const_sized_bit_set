@@ -452,5 +452,16 @@ mod tests {
         assert_eq!(expected_count, 0)
     }
 
-    //#[test]
+    #[test]
+    pub fn test_is_sorted(){
+        let iter = BitSet8::from_inner(0b11101111).iter_subsets(3);
+        assert!(iter.clone().is_sorted());
+        assert!(iter.collect::<Vec<_>>().into_iter().is_sorted());
+    }
+
+    #[test]
+    pub fn test_min(){
+        let iter = BitSet8::from_inner(0b11101111).iter_subsets(3);
+        assert_eq!(iter.min(), Some(BitSet8::from_inner_const(0b111)) ); 
+    }
 }

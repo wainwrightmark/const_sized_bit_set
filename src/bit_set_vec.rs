@@ -93,8 +93,6 @@ impl BitSetVec {
     fn to_full_set_element(element: SetElement, word_index: usize) -> SetElement {
         element + (word_index as u32 * WORD_BITS)
     }
-
-    
 }
 
 const WORD_BITS: u32 = u64::BITS;
@@ -175,7 +173,8 @@ impl BitSet for BitSetVec {
 
     fn pop_last(&mut self) -> Option<SetElement> {
         for (word_index, inner) in self.0.iter_mut().enumerate().rev() {
-            if let Some(e) = crate::mutate_inner(inner, super::bit_set_n::BitSet64::pop_last_const) {
+            if let Some(e) = crate::mutate_inner(inner, super::bit_set_n::BitSet64::pop_last_const)
+            {
                 return Some(Self::to_full_set_element(e, word_index));
             }
         }
@@ -388,16 +387,16 @@ impl BitSet for BitSetVec {
         return total;
     }
 
-    fn retain<F>(&mut self,mut f: F)
+    fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(&SetElement) -> bool,
     {
         let mut word_index = 0;
-        while let Some(word) = self.0.get_mut(word_index){
+        while let Some(word) = self.0.get_mut(word_index) {
             let offset = word_index as u32 * WORD_BITS;
-            for element_index  in BitSet64::from_inner_const(word.clone()).iter_const(){
-                if !f(&(element_index + offset)){
-                    crate::mutate_inner(word, |w|w.remove_const(element_index));
+            for element_index in BitSet64::from_inner_const(word.clone()).iter_const() {
+                if !f(&(element_index + offset)) {
+                    crate::mutate_inner(word, |w| w.remove_const(element_index));
                 }
             }
             word_index += 1;
@@ -1199,43 +1198,6 @@ pub mod tests {
         result
     }
 
-    // #[test]
-    // fn test_iter_subsets() {
-    //     let set = BitSetVec::from_iter([0u32, 1, 2, 3, 4]);
-
-    //     for size in 0u32..=5 {
-    //         let iter = set.iter_subsets(size);
-    //         let expected_len = n_choose_k(set.len(), size);
-    //         let results: Vec<_> = iter.collect();
-
-    //         assert_eq!(
-    //             results.len(),
-    //             expected_len as usize,
-    //             "Should be {} results but there were {}. [{}]",
-    //             expected_len,
-    //             results.len(),
-    //             results.iter().fold(String::new(), |mut acc, x| {
-    //                 acc.push_str(&x.to_string());
-    //                 acc
-    //             })
-    //         );
-
-    //         for r in &results {
-    //             assert_eq!(r.len(), size, "Result should have the correct size");
-    //             assert!(r.is_subset(&set), "Result should be a subset of the set");
-    //         }
-
-    //         let mut sorted_results = results.clone();
-    //         sorted_results.sort();
-    //         sorted_results.dedup();
-
-    //         assert_eq!(
-    //             results, sorted_results,
-    //             "Results should be free of duplicates and sorted"
-    //         );
-    //     }
-    // }
-
     #[test]
     fn test_from_first_n() {
         let set = BitSetVec::from_first_n(65);
@@ -1332,39 +1294,14 @@ pub mod tests {
         }
     }
 
-    // #[test]
-    // fn test_trailing_zeros() {
-    //     assert_eq!(BitSetVec::from_iter([0u32].into_iter()).trailing_zeros(), 0);
-    //     assert_eq!(BitSetVec::from_iter([2u32].into_iter()).trailing_zeros(), 2);
-    //     assert_eq!(BitSetVec::from_iter([72u32].into_iter()).trailing_zeros(), 72);
-    //     assert_eq!(BitSetVec::EMPTY.trailing_zeros(), 128);
-    // }
+    #[test]
+    fn test_trailing_ones() {
+        assert_eq!(BitSetVec::from_iter([1u32].into_iter()).trailing_ones(), 0);
+        assert_eq!(BitSetVec::from_first_n(2).trailing_ones(), 2);
+        assert_eq!(BitSetVec::from_first_n(72).trailing_ones(), 72);
 
-    // #[test]
-    // fn test_trailing_ones() {
-    //     assert_eq!(BitSetVec::from_iter([1u32].into_iter()).trailing_ones(), 0);
-    //     assert_eq!(BitSetVec::from_first_n(2).trailing_ones(), 2);
-    //     assert_eq!(BitSetVec::from_first_n(72).trailing_ones(), 72);
-
-    //     assert_eq!(BitSetVec::from_first_n(128).trailing_ones(), 128);
-    // }
-
-    // #[test]
-    // fn test_leading_zeros() {
-    //     assert_eq!(BitSetVec::from_iter([127u32].into_iter()).leading_zeros(), 0);
-    //     assert_eq!(BitSetVec::from_iter([126u32].into_iter()).leading_zeros(), 1);
-    //     assert_eq!(BitSetVec::from_iter([2u32].into_iter()).leading_zeros(), 125);
-
-    //     assert_eq!(BitSetVec::EMPTY.leading_zeros(), 128);
-    // }
-
-    // #[test]
-    // fn test_leading_ones() {
-    //     assert_eq!(BitSetVec::from_first_n(128).with_removed(127).leading_ones(), 0);
-    //     assert_eq!(BitSetVec::from_first_n(128).with_removed(126).leading_ones(), 1);
-    //     assert_eq!(BitSetVec::from_first_n(128).with_removed(2).leading_ones(), 125);
-    //     assert_eq!(BitSetVec::from_first_n(128).leading_ones(), 128);
-    // }
+        assert_eq!(BitSetVec::from_first_n(128).trailing_ones(), 128);
+    }
 
     // #[test]
     // fn test_shift_right() {
@@ -1434,24 +1371,24 @@ pub mod tests {
     }
 
     #[test]
-    fn test_retain(){
+    fn test_retain() {
         let mut set = BitSetVec::from_fn(256, |x| x % 2 == 0);
         let mut c = 0;
-        set.retain(|e|{
+        set.retain(|e| {
             c += e;
-            e % 3 ==0
+            e % 3 == 0
         });
 
         assert_eq!(c, 16256); //the sum of all even numbers up to 256
 
-        let expected =  BitSetVec::from_fn(256,|x| x % 6 == 0);
+        let expected = BitSetVec::from_fn(256, |x| x % 6 == 0);
 
         assert_eq!(set, expected)
     }
 
     #[test]
     fn test_clear() {
-        let mut set = BitSetVec::from_fn(256,|x| x % 2 == 0);
+        let mut set = BitSetVec::from_fn(256, |x| x % 2 == 0);
         set.clear();
         assert!(set.is_empty())
     }
