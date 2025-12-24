@@ -381,6 +381,19 @@ impl BitSet for BitSetVec {
             }
         }
     }
+
+    fn trailing_ones(&self) -> u32 {
+        let mut total = 0;
+        for x in self.0.iter(){
+            if *x == u64::MAX{
+                total += u64::BITS;
+            }else{
+                total += x.trailing_ones();
+                return total;
+            }
+        }
+        return total;
+    }
 }
 
 impl Extend<usize> for BitSetVec {
@@ -1312,36 +1325,36 @@ pub mod tests {
 
     // #[test]
     // fn test_trailing_zeros() {
-    //     assert_eq!(BitSetVec::from_iter([0u32].into_iter()).t_zeros(), 0);
-    //     assert_eq!(BitSetVec::from_iter([2u32].into_iter()).t_zeros(), 2);
-    //     assert_eq!(BitSetVec::from_iter([72u32].into_iter()).t_zeros(), 72);
-    //     assert_eq!(BitSetVec::EMPTY.t_zeros(), 128);
+    //     assert_eq!(BitSetVec::from_iter([0u32].into_iter()).trailing_zeros(), 0);
+    //     assert_eq!(BitSetVec::from_iter([2u32].into_iter()).trailing_zeros(), 2);
+    //     assert_eq!(BitSetVec::from_iter([72u32].into_iter()).trailing_zeros(), 72);
+    //     assert_eq!(BitSetVec::EMPTY.trailing_zeros(), 128);
     // }
 
     // #[test]
     // fn test_trailing_ones() {
-    //     assert_eq!(BitSetVec::from_iter([1u32].into_iter()).t_ones(), 0);
-    //     assert_eq!(BitSetVec::from_first_n(2).t_ones(), 2);
-    //     assert_eq!(BitSetVec::from_first_n(72).t_ones(), 72);
+    //     assert_eq!(BitSetVec::from_iter([1u32].into_iter()).trailing_ones(), 0);
+    //     assert_eq!(BitSetVec::from_first_n(2).trailing_ones(), 2);
+    //     assert_eq!(BitSetVec::from_first_n(72).trailing_ones(), 72);
 
-    //     assert_eq!(BitSetVec::from_first_n(128).t_ones(), 128);
+    //     assert_eq!(BitSetVec::from_first_n(128).trailing_ones(), 128);
     // }
 
     // #[test]
     // fn test_leading_zeros() {
-    //     assert_eq!(BitSetVec::from_iter([127u32].into_iter()).l_zeros(), 0);
-    //     assert_eq!(BitSetVec::from_iter([126u32].into_iter()).l_zeros(), 1);
-    //     assert_eq!(BitSetVec::from_iter([2u32].into_iter()).l_zeros(), 125);
+    //     assert_eq!(BitSetVec::from_iter([127u32].into_iter()).leading_zeros(), 0);
+    //     assert_eq!(BitSetVec::from_iter([126u32].into_iter()).leading_zeros(), 1);
+    //     assert_eq!(BitSetVec::from_iter([2u32].into_iter()).leading_zeros(), 125);
 
-    //     assert_eq!(BitSetVec::EMPTY.l_zeros(), 128);
+    //     assert_eq!(BitSetVec::EMPTY.leading_zeros(), 128);
     // }
 
     // #[test]
     // fn test_leading_ones() {
-    //     assert_eq!(BitSetVec::from_first_n(128).with_removed(127).l_ones(), 0);
-    //     assert_eq!(BitSetVec::from_first_n(128).with_removed(126).l_ones(), 1);
-    //     assert_eq!(BitSetVec::from_first_n(128).with_removed(2).l_ones(), 125);
-    //     assert_eq!(BitSetVec::from_first_n(128).l_ones(), 128);
+    //     assert_eq!(BitSetVec::from_first_n(128).with_removed(127).leading_ones(), 0);
+    //     assert_eq!(BitSetVec::from_first_n(128).with_removed(126).leading_ones(), 1);
+    //     assert_eq!(BitSetVec::from_first_n(128).with_removed(2).leading_ones(), 125);
+    //     assert_eq!(BitSetVec::from_first_n(128).leading_ones(), 128);
     // }
 
     // #[test]

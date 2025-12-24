@@ -13,7 +13,7 @@ impl<T: BitSet + ShiftableBitSet + FiniteBitSet + Clone> Iterator for SetSizeNIt
     fn next(&mut self) -> Option<Self::Item> {
         let next_set = self.next_set.clone();
 
-        let leading_ones = self.next_set.l_ones();
+        let leading_ones = self.next_set.leading_ones();
         self.next_set.shift_left(leading_ones);
 
         if self.next_set.is_empty() {
@@ -23,7 +23,7 @@ impl<T: BitSet + ShiftableBitSet + FiniteBitSet + Clone> Iterator for SetSizeNIt
             return None;
         }
 
-        let leading_zeros = self.next_set.l_zeros();
+        let leading_zeros = self.next_set.leading_zeros();
 
         self.next_set.shift_left(1);
         self.next_set.shift_left(leading_zeros);

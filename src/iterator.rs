@@ -62,10 +62,10 @@ impl<Inner: BitSet + ShiftableBitSet + FiniteBitSet> Iterator for BitSetIterator
         let mut n = n as SetElement;
         let mut shift = 0;
         loop {
-            let tz = self.0.t_zeros();
+            let tz = self.0.trailing_zeros();
             self.0.shift_right(tz);
             shift += tz;
-            let to = self.0.t_ones();
+            let to = self.0.trailing_ones();
             if let Some(new_n) = n.checked_sub(to) {
                 n = new_n;
                 self.0.shift_right(to);
@@ -92,10 +92,10 @@ impl<Inner: BitSet + ShiftableBitSet + FiniteBitSet> Iterator for BitSetIterator
             }
         } else {
             while !self.0.is_empty() {
-                let tz = self.0.t_zeros();
+                let tz = self.0.trailing_zeros();
                 self.0.shift_right(tz);
                 offset += tz;
-                let ones = self.0.t_ones();
+                let ones = self.0.trailing_ones();
                 for _ in 0..ones {
                     accum = f(accum, offset);
                     offset += 1;
@@ -117,10 +117,10 @@ impl<Inner: BitSet + ShiftableBitSet + FiniteBitSet> Iterator for BitSetIterator
             total += (Inner::CAPACITY * (Inner::CAPACITY - 1)) / 2;
         } else {
             while !self.0.is_empty() {
-                let zeros = self.0.t_zeros();
+                let zeros = self.0.trailing_zeros();
                 self.0.shift_right(zeros);
                 multiplier += zeros;
-                let ones = self.0.t_ones();
+                let ones = self.0.trailing_ones();
                 self.0.shift_right(ones);
                 total += (ones * (ones + multiplier + multiplier - 1)) / 2;
                 multiplier += ones;
@@ -153,10 +153,10 @@ impl<Inner: BitSet + ShiftableBitSet + FiniteBitSet> DoubleEndedIterator for Bit
         let mut n = n as SetElement;
         let mut shift = 0;
         loop {
-            let lz = self.0.l_zeros();
+            let lz = self.0.leading_zeros();
             self.0.shift_left(lz);
             shift += lz;
-            let leading_ones = self.0.l_ones();
+            let leading_ones = self.0.leading_ones();
             if let Some(new_n) = n.checked_sub(leading_ones) {
                 n = new_n;
                 self.0.shift_left(leading_ones);
@@ -182,10 +182,10 @@ impl<Inner: BitSet + ShiftableBitSet + FiniteBitSet> DoubleEndedIterator for Bit
             }
         } else {
             while !self.0.is_empty() {
-                let lz = self.0.l_zeros();
+                let lz = self.0.leading_zeros();
                 self.0.shift_left(lz);
                 offset -= lz;
-                let leading_ones = self.0.l_ones();
+                let leading_ones = self.0.leading_ones();
                 for _ in 0..leading_ones {
                     offset -= 1;
                     accum = f(accum, offset);

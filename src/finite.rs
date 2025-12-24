@@ -1,7 +1,4 @@
-use crate::{
-    BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, BitSetArray, SetElement,
-    bit_set_trait::BitSet,
-};
+use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, SetElement, bit_set_trait::BitSet};
 
 //A Bitset with a finite capacity
 pub trait FiniteBitSet: BitSet {
@@ -45,7 +42,11 @@ pub trait FiniteBitSet: BitSet {
         result
     }
 
-    fn is_all(&self)-> bool;
+    fn is_all(&self) -> bool;
+
+    fn trailing_zeros(&self) -> u32;
+    fn leading_zeros(&self) -> u32;
+    fn leading_ones(&self) -> u32;
 }
 
 macro_rules! impl_bit_set_finite {
@@ -62,8 +63,20 @@ macro_rules! impl_bit_set_finite {
                 self.reverse_const();
             }
 
-            fn is_all(&self)-> bool{
+            fn is_all(&self) -> bool {
                 self.is_all_const()
+            }
+
+            fn trailing_zeros(&self) -> u32 {
+                self.into_inner_const().trailing_zeros()
+            }
+
+            fn leading_zeros(&self) -> u32 {
+                self.into_inner_const().leading_zeros()
+            }
+
+            fn leading_ones(&self) -> u32 {
+                self.into_inner_const().leading_ones()
             }
         }
     };
@@ -74,20 +87,3 @@ impl_bit_set_finite!(BitSet16);
 impl_bit_set_finite!(BitSet32);
 impl_bit_set_finite!(BitSet64);
 impl_bit_set_finite!(BitSet128);
-
-impl<const WORDS: usize> FiniteBitSet for BitSetArray<WORDS> {
-    const ALL: Self = Self::ALL;
-    const CAPACITY: u32 = Self::CAPACITY;
-
-    fn negate(&mut self) {
-        self.negate_const();
-    }
-
-    fn reverse(&mut self) {
-        self.reverse_const();
-    }
-
-    fn is_all(&self)-> bool {
-        self.is_all_const()
-    }
-}

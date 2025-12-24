@@ -1,3 +1,4 @@
+use crate::finite::FiniteBitSet;
 use crate::shiftable::ShiftableBitSet;
 use crate::slice_iter::SliceIter;
 use crate::{BitSet64, SetElement};
@@ -589,6 +590,23 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
             }
         }
     }
+
+    pub const fn trailing_ones_const(&self) -> u32 {
+        let mut total = 0;
+        let mut i = 0;
+        while i < WORDS {
+            let word = self.0[i];
+            if word == u64::MAX {
+                total += u64::BITS;
+            } else {
+                total += word.trailing_ones();
+                return total;
+            }
+            i += 1;
+        }
+
+        total
+    }
 }
 
 impl<const WORDS: usize> Extend<usize> for BitSetArray<WORDS> {
@@ -625,8 +643,23 @@ impl<const WORDS: usize> FromIterator<u32> for BitSetArray<WORDS> {
     }
 }
 
-impl<const WORDS: usize> ShiftableBitSet for BitSetArray<WORDS> {
-    fn t_zeros(&self) -> u32 {
+impl<const WORDS: usize> FiniteBitSet for BitSetArray<WORDS> {
+    const ALL: Self = Self::ALL;
+    const CAPACITY: u32 = Self::CAPACITY;
+
+    fn negate(&mut self) {
+        self.negate_const();
+    }
+
+    fn reverse(&mut self) {
+        self.reverse_const();
+    }
+
+    fn is_all(&self) -> bool {
+        self.is_all_const()
+    }
+
+    fn trailing_zeros(&self) -> u32 {
         let mut total = 0;
         for i in 0..WORDS {
             let word = self.0[i];
@@ -641,22 +674,7 @@ impl<const WORDS: usize> ShiftableBitSet for BitSetArray<WORDS> {
         total
     }
 
-    fn t_ones(&self) -> u32 {
-        let mut total = 0;
-        for i in 0..WORDS {
-            let word = self.0[i];
-            if word == u64::MAX {
-                total += u64::BITS;
-            } else {
-                total += word.trailing_ones();
-                return total;
-            }
-        }
-
-        total
-    }
-
-    fn l_zeros(&self) -> u32 {
+    fn leading_zeros(&self) -> u32 {
         let mut total = 0;
         for i in (0..WORDS).rev() {
             let word = self.0[i];
@@ -671,7 +689,7 @@ impl<const WORDS: usize> ShiftableBitSet for BitSetArray<WORDS> {
         total
     }
 
-    fn l_ones(&self) -> u32 {
+    fn leading_ones(&self) -> u32 {
         let mut total = 0;
         for i in (0..WORDS).rev() {
             let word = self.0[i];
@@ -685,7 +703,9 @@ impl<const WORDS: usize> ShiftableBitSet for BitSetArray<WORDS> {
 
         total
     }
+}
 
+impl<const WORDS: usize> ShiftableBitSet for BitSetArray<WORDS> {
     fn shift_right(&mut self, n: SetElement) {
         let words_shift = (n / u64::BITS) as usize;
         let bits_shift = n % u64::BITS;
@@ -1648,40 +1668,49 @@ pub mod tests {
 
     #[test]
     fn test_trailing_zeros() {
-        assert_eq!(BitSetArray::<2>::from_iter([0u32].into_iter()).t_zeros(), 0);
-        assert_eq!(BitSetArray::<2>::from_iter([2u32].into_iter()).t_zeros(), 2);
         assert_eq!(
-            BitSetArray::<2>::from_iter([72u32].into_iter()).t_zeros(),
+            BitSetArray::<2>::from_iter([0u32].into_iter()).trailing_zeros(),
+            0
+        );
+        assert_eq!(
+            BitSetArray::<2>::from_iter([2u32].into_iter()).trailing_zeros(),
+            2
+        );
+        assert_eq!(
+            BitSetArray::<2>::from_iter([72u32].into_iter()).trailing_zeros(),
             72
         );
-        assert_eq!(BitSetArray::<2>::EMPTY.t_zeros(), 128);
+        assert_eq!(BitSetArray::<2>::EMPTY.trailing_zeros(), 128);
     }
 
     #[test]
     fn test_trailing_ones() {
-        assert_eq!(BitSetArray::<2>::from_iter([1u32].into_iter()).t_ones(), 0);
-        assert_eq!(BitSetArray::<2>::from_first_n_const(2).t_ones(), 2);
-        assert_eq!(BitSetArray::<2>::from_first_n_const(72).t_ones(), 72);
+        assert_eq!(
+            BitSetArray::<2>::from_iter([1u32].into_iter()).trailing_ones(),
+            0
+        );
+        assert_eq!(BitSetArray::<2>::from_first_n_const(2).trailing_ones(), 2);
+        assert_eq!(BitSetArray::<2>::from_first_n_const(72).trailing_ones(), 72);
 
-        assert_eq!(BitSetArray::<2>::ALL.t_ones(), 128);
+        assert_eq!(BitSetArray::<2>::ALL.trailing_ones(), 128);
     }
 
     #[test]
     fn test_leading_zeros() {
         assert_eq!(
-            BitSetArray::<2>::from_iter([127u32].into_iter()).l_zeros(),
+            BitSetArray::<2>::from_iter([127u32].into_iter()).leading_zeros(),
             0
         );
         assert_eq!(
-            BitSetArray::<2>::from_iter([126u32].into_iter()).l_zeros(),
+            BitSetArray::<2>::from_iter([126u32].into_iter()).leading_zeros(),
             1
         );
         assert_eq!(
-            BitSetArray::<2>::from_iter([2u32].into_iter()).l_zeros(),
+            BitSetArray::<2>::from_iter([2u32].into_iter()).leading_zeros(),
             125
         );
 
-        assert_eq!(BitSetArray::<2>::EMPTY.l_zeros(), 128);
+        assert_eq!(BitSetArray::<2>::EMPTY.leading_zeros(), 128);
     }
 
     #[test]
@@ -1689,22 +1718,22 @@ pub mod tests {
         assert_eq!(
             BitSetArray::<2>::from_iter([127u32].into_iter())
                 .with_negated()
-                .l_ones(),
+                .leading_ones(),
             0
         );
         assert_eq!(
             BitSetArray::<2>::from_iter([126u32].into_iter())
                 .with_negated()
-                .l_ones(),
+                .leading_ones(),
             1
         );
         assert_eq!(
             BitSetArray::<2>::from_iter([2u32].into_iter())
                 .with_negated()
-                .l_ones(),
+                .leading_ones(),
             125
         );
-        assert_eq!(BitSetArray::<2>::ALL.l_ones(), 128);
+        assert_eq!(BitSetArray::<2>::ALL.leading_ones(), 128);
     }
 
     #[test]

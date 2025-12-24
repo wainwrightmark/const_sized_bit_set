@@ -15,7 +15,7 @@ pub trait BitSet: Sized {
     fn from_first_n(n: u32) -> Self;
 
     fn is_empty(&self) -> bool;
-    
+
     fn clear(&mut self);
 
     fn contains(&self, element: SetElement) -> bool;
@@ -206,7 +206,7 @@ pub trait BitSet: Sized {
     fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(&SetElement) -> bool,
-        Self: Clone
+        Self: Clone,
     {
         //todo specialize this implementation for BitSetVec - no clone needed
         let clone = self.clone();
@@ -276,7 +276,6 @@ pub trait BitSet: Sized {
 
         let mut iter = self.iter();
 
-
         while let Some(next) = iter.next_back() {
             if let Some(new_index) = index.checked_sub(n_c_k.value()) {
                 index = new_index;
@@ -291,8 +290,11 @@ pub trait BitSet: Sized {
                 Some(r) => n_c_k = r,
                 None => {
                     //todo do union here
-                    iter.fold(&mut new_set, |acc,x| {acc.insert(x); acc});
-                    
+                    iter.fold(&mut new_set, |acc, x| {
+                        acc.insert(x);
+                        acc
+                    });
+
                     return new_set;
                 }
             }
@@ -300,6 +302,10 @@ pub trait BitSet: Sized {
 
         new_set
     }
+
+    ///Returns the number of ones at the beginning of the set
+    /// See `FiniteBitSet` for `trailing_zeros`, `leading_ones` and `leading_zeros`
+    fn trailing_ones(&self) -> u32;
 }
 
 macro_rules! impl_bit_set_trait_methods {
@@ -312,7 +318,7 @@ macro_rules! impl_bit_set_trait_methods {
             self.count_const()
         }
 
-        fn clear(&mut self){
+        fn clear(&mut self) {
             self.clear_const()
         }
 
@@ -402,6 +408,10 @@ macro_rules! impl_bit_set_trait_methods {
 
         fn largest_element_less_than(&self, index: SetElement) -> Option<SetElement> {
             self.largest_element_less_than_const(index)
+        }
+
+        fn trailing_ones(&self) -> u32 {
+            self.trailing_ones_const()
         }
 
         fn iter<'a>(

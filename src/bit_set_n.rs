@@ -341,6 +341,10 @@ macro_rules! define_bit_set_n {
             pub const fn iter_const(&self)-> crate::iterator::BitSetIterator<Self> {
                 crate::iterator::BitSetIterator::new(*self)
             }
+
+            pub const fn trailing_ones_const(&self)-> u32{
+                self.0.trailing_ones()
+            }
         }
 
         impl Extend<SetElement> for $name {
