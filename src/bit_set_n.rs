@@ -28,7 +28,6 @@ macro_rules! define_bit_set_n {
                 self.0 == Self::ALL.0
             }
 
-            #[must_use]
             #[inline]
             pub const fn clear_const(&mut self){
                 self.0 = Self::EMPTY.0;
@@ -665,6 +664,29 @@ mod tests {
         let expected_set = BitSet8::from_fn(|x| x % 2 == 1);
 
         assert_eq!(set.with_reversed(), expected_set);
+    }
+
+    #[test]
+    fn test_retain(){
+        let mut set = BitSet128::from_fn(|x| x % 2 == 0);
+        let mut c = 0;
+        set.retain(|e|{
+            c += e;
+            e % 3 ==0
+        });
+
+        assert_eq!(c, 4032);
+
+        let expected =  BitSet128::from_fn(|x| x % 6 == 0);
+
+        assert_eq!(set, expected)
+    }
+
+    #[test]
+    fn test_clear(){
+        let mut set = BitSet128::from_fn(|x| x % 2 == 0);
+        set.clear_const();
+        assert!(set.is_empty_const())
     }
 
     #[test]

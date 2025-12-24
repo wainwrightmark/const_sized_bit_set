@@ -1,6 +1,6 @@
 use core::iter::FusedIterator;
 
-use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, BitSetArray, SetElement};
+use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, SetElement};
 
 pub trait BitSet: Sized {
     type Inner;
@@ -203,20 +203,9 @@ pub trait BitSet: Sized {
     fn largest_element_less_than(&self, index: SetElement) -> Option<SetElement>;
 
     /// Retains only the elements specified by the predicate.     
-    fn retain<F>(&mut self, mut f: F)
+    fn retain<F>(&mut self, f: F)
     where
-        F: FnMut(&SetElement) -> bool,
-        Self: Clone,
-    {
-        //todo specialize this implementation for BitSetVec - no clone needed
-        let clone = self.clone();
-        let iter = clone.iter();
-        for x in iter {
-            if f(&x) {
-                self.remove(x);
-            }
-        }
-    }
+        F: FnMut(&SetElement) -> bool;
 
     #[must_use]
     fn iter_subsets(
@@ -433,6 +422,17 @@ macro_rules! impl_bit_set_trait {
             const EMPTY: Self = Self::EMPTY;
 
             impl_bit_set_trait_methods!();
+
+            fn retain<F>(&mut self, mut f: F)
+            where
+                F: FnMut(&SetElement) -> bool,
+            {
+                for x in self.clone().iter() {
+                    if !f(&x) {
+                        self.remove(x);
+                    }
+                }
+            }
         }
     };
 }
@@ -443,9 +443,26 @@ impl_bit_set_trait!(BitSet32, u32);
 impl_bit_set_trait!(BitSet64, u64);
 impl_bit_set_trait!(BitSet128, u128);
 
-impl<const WORDS: usize> BitSet for BitSetArray<WORDS> {
+impl<const WORDS: usize> BitSet for crate::prelude::BitSetArray<WORDS> {
     type Inner = [u64; WORDS];
     const EMPTY: Self = Self::EMPTY;
 
     impl_bit_set_trait_methods!();
+
+    fn retain<F>(&mut self,mut f: F)
+    where
+        F: FnMut(&SetElement) -> bool,
+    {
+        let mut word_index = 0;
+        while let Some(word) = self.0.get_mut(word_index){
+            let w = word.clone();
+            let offset = word_index as u32 * u64::BITS;
+            for element_index in BitSet64::from_inner_const(w).iter_const(){
+                if !f(&(element_index + offset)){
+                    crate::mutate_inner(word, |w|w.remove_const(element_index));
+                }
+            }
+            word_index += 1;
+        }
+    }
 }

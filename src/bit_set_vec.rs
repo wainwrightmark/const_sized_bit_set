@@ -94,14 +94,7 @@ impl BitSetVec {
         element + (word_index as u32 * WORD_BITS)
     }
 
-    #[inline]
-
-    fn mutate_inner<R>(inner: &mut u64, f: impl FnOnce(&mut BitSet64) -> R) -> R {
-        let mut set = BitSet64::from_inner(*inner);
-        let result = f(&mut set);
-        *inner = set.into_inner_const();
-        result
-    }
+    
 }
 
 const WORD_BITS: u32 = u64::BITS;
@@ -173,7 +166,7 @@ impl BitSet for BitSetVec {
 
     fn pop(&mut self) -> Option<SetElement> {
         for (word_index, inner) in self.0.iter_mut().enumerate() {
-            if let Some(e) = Self::mutate_inner(inner, super::bit_set_n::BitSet64::pop_const) {
+            if let Some(e) = crate::mutate_inner(inner, super::bit_set_n::BitSet64::pop_const) {
                 return Some(Self::to_full_set_element(e, word_index));
             }
         }
@@ -182,7 +175,7 @@ impl BitSet for BitSetVec {
 
     fn pop_last(&mut self) -> Option<SetElement> {
         for (word_index, inner) in self.0.iter_mut().enumerate().rev() {
-            if let Some(e) = Self::mutate_inner(inner, super::bit_set_n::BitSet64::pop_last_const) {
+            if let Some(e) = crate::mutate_inner(inner, super::bit_set_n::BitSet64::pop_last_const) {
                 return Some(Self::to_full_set_element(e, word_index));
             }
         }
@@ -199,13 +192,13 @@ impl BitSet for BitSetVec {
     fn insert(&mut self, element: SetElement) -> bool {
         let (word_index, shift) = Self::to_word_and_shift(element);
         let word = self.get_or_create_word_n(word_index);
-        Self::mutate_inner(word, |s| s.insert_const(shift))
+        crate::mutate_inner(word, |s| s.insert_const(shift))
     }
 
     fn remove(&mut self, element: SetElement) -> bool {
         let (word_index, shift) = Self::to_word_and_shift(element);
         match self.0.get_mut(word_index) {
-            Some(inner) => Self::mutate_inner(inner, |s| s.remove_const(shift)),
+            Some(inner) => crate::mutate_inner(inner, |s| s.remove_const(shift)),
             None => false,
         }
     }
@@ -250,7 +243,7 @@ impl BitSet for BitSetVec {
     fn intersect_with(&mut self, rhs: &Self) {
         for (word_index, s_inner) in self.0.iter_mut().enumerate() {
             match rhs.try_get_word_set(word_index) {
-                Some(r_set) => Self::mutate_inner(s_inner, |s| s.intersect_with(&r_set)),
+                Some(r_set) => crate::mutate_inner(s_inner, |s| s.intersect_with(&r_set)),
                 None => *s_inner = 0,
             }
         }
@@ -259,14 +252,14 @@ impl BitSet for BitSetVec {
     fn union_with(&mut self, rhs: &Self) {
         for (word_index, r_set) in rhs.enumerate_sets() {
             let s_inner = self.get_or_create_word_n(word_index);
-            Self::mutate_inner(s_inner, |s| s.union_with_const(&r_set));
+            crate::mutate_inner(s_inner, |s| s.union_with_const(&r_set));
         }
     }
 
     fn except_with(&mut self, rhs: &Self) {
         for (word_index, s_inner) in self.0.iter_mut().enumerate() {
             if let Some(r_set) = rhs.try_get_word_set(word_index) {
-                Self::mutate_inner(s_inner, |s| s.except_with_const(&r_set));
+                crate::mutate_inner(s_inner, |s| s.except_with_const(&r_set));
             } else {
                 //rhs is empty here so do nothing
             }
@@ -384,15 +377,31 @@ impl BitSet for BitSetVec {
 
     fn trailing_ones(&self) -> u32 {
         let mut total = 0;
-        for x in self.0.iter(){
-            if *x == u64::MAX{
+        for x in self.0.iter() {
+            if *x == u64::MAX {
                 total += u64::BITS;
-            }else{
+            } else {
                 total += x.trailing_ones();
                 return total;
             }
         }
         return total;
+    }
+
+    fn retain<F>(&mut self,mut f: F)
+    where
+        F: FnMut(&SetElement) -> bool,
+    {
+        let mut word_index = 0;
+        while let Some(word) = self.0.get_mut(word_index){
+            let offset = word_index as u32 * WORD_BITS;
+            for element_index  in BitSet64::from_inner_const(word.clone()).iter_const(){
+                if !f(&(element_index + offset)){
+                    crate::mutate_inner(word, |w|w.remove_const(element_index));
+                }
+            }
+            word_index += 1;
+        }
     }
 }
 
@@ -1422,5 +1431,28 @@ pub mod tests {
             let actual = set.smallest_element_greater_than(e);
             assert_eq!(actual, expected, "e = {e}");
         }
+    }
+
+    #[test]
+    fn test_retain(){
+        let mut set = BitSetVec::from_fn(256, |x| x % 2 == 0);
+        let mut c = 0;
+        set.retain(|e|{
+            c += e;
+            e % 3 ==0
+        });
+
+        assert_eq!(c, 16256); //the sum of all even numbers up to 256
+
+        let expected =  BitSetVec::from_fn(256,|x| x % 6 == 0);
+
+        assert_eq!(set, expected)
+    }
+
+    #[test]
+    fn test_clear() {
+        let mut set = BitSetVec::from_fn(256,|x| x % 2 == 0);
+        set.clear();
+        assert!(set.is_empty())
     }
 }

@@ -1,4 +1,4 @@
-use crate::{SetElement, prelude::BitSet64};
+use crate::SetElement;
 use core::iter::FusedIterator;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -31,19 +31,14 @@ const fn last_chunk_bit_to_element(
     element + elements_offset + (WORD_BITS * (slice.len() as u32 + 1))
 }
 
-#[inline]
-fn mutate_inner<R>(inner: &mut u64, f: impl FnOnce(&mut BitSet64) -> R) -> R {
-    let mut set = BitSet64::from_inner_const(*inner);
-    let result = f(&mut set);
-    *inner = set.into_inner_const();
-    result
-}
 impl<'a> SliceIter<'a> {
     pub const fn new(slice: &'a [u64]) -> Self {
         match slice.split_first() {
-            Some((&first_chunk, remaining_slice)) =>
-            {
-                Self { slice: remaining_slice, elements_offset: 0, first_chunk, last_chunk: 0 }
+            Some((&first_chunk, remaining_slice)) => Self {
+                slice: remaining_slice,
+                elements_offset: 0,
+                first_chunk,
+                last_chunk: 0,
             },
             None => Self {
                 slice,
@@ -84,7 +79,7 @@ impl<'a> Iterator for SliceIter<'a> {
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         loop {
-            match mutate_inner(&mut self.first_chunk, |x| x.pop_const()) {
+            match crate:: mutate_inner(&mut self.first_chunk, |x| x.pop_const()) {
                 Some(element) => {
                     return Some(first_chunk_bit_to_element(element, self.elements_offset));
                 }
@@ -259,7 +254,7 @@ impl<'a> ExactSizeIterator for SliceIter<'a> {
 impl<'a> DoubleEndedIterator for SliceIter<'a> {
     fn next_back(&mut self) -> Option<Self::Item> {
         loop {
-            match mutate_inner(&mut self.last_chunk, |x| x.pop_last_const()) {
+            match crate::mutate_inner(&mut self.last_chunk, |x| x.pop_last_const()) {
                 Some(element) => {
                     return Some(last_chunk_bit_to_element(
                         element,
@@ -273,7 +268,7 @@ impl<'a> DoubleEndedIterator for SliceIter<'a> {
                         self.slice = new_slice;
                     }
                     None => {
-                        return mutate_inner(&mut self.first_chunk, |x| x.pop_last_const()).map(
+                        return crate::mutate_inner(&mut self.first_chunk, |x| x.pop_last_const()).map(
                             |element| first_chunk_bit_to_element(element, self.elements_offset),
                         );
                     }

@@ -16,7 +16,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(any(test, feature = "serde"), derive(Serialize, Deserialize))]
 pub struct BitSetArray<const WORDS: usize>(
-    #[cfg_attr(any(test, feature = "serde"), serde(with = "serde_arrays"))] [u64; WORDS],
+    #[cfg_attr(any(test, feature = "serde"), serde(with = "serde_arrays"))] pub(crate) [u64; WORDS],
 );
 
 impl<const WORDS: usize> core::fmt::Display for BitSetArray<WORDS> {
@@ -122,7 +122,6 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
         self.eq(&Self::ALL)
     }
 
-    #[must_use]
     #[inline]
     pub const fn clear_const(&mut self) {
         self.0 = Self::EMPTY.0;
@@ -1814,5 +1813,28 @@ pub mod tests {
         let expected_set5 = BitSetArray::<5>::from_fn(|x| x % 2 == 1);
 
         assert_eq!(set5.with_reversed(), expected_set5);
+    }
+
+    #[test]
+    fn test_retain() {
+        let mut set = BitSetArray::<4>::from_fn(|x| x % 2 == 0);
+        let mut c = 0;
+        set.retain(|e| {
+            c += e;
+            e % 3 == 0
+        });
+
+        assert_eq!(c, 16256);
+
+        let expected = BitSetArray::<4>::from_fn(|x| x % 6 == 0);
+
+        assert_eq!(set, expected)
+    }
+
+    #[test]
+    fn test_clear() {
+        let mut set = BitSetArray::<4>::from_fn(|x| x % 2 == 0);
+        set.clear_const();
+        assert!(set.is_empty_const())
     }
 }
