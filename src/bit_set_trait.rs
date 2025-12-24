@@ -276,7 +276,7 @@ pub trait BitSet: Sized {
                 }
             }
             if let Some(r) = n_c_k.try_decrement_n() {
-                n_c_k = r
+                n_c_k = r;
             } else {
                 //todo do union here
                 iter.fold(&mut new_set, |acc, x| {

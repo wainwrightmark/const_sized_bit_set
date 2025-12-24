@@ -2,6 +2,7 @@
 #![deny(warnings, dead_code, unused_imports, unused_mut)]
 #![warn(clippy::pedantic)]
 #![allow(clippy::double_must_use)]
+#![forbid(unsafe_code)]
 pub mod bit_map;
 pub mod bit_set_array;
 pub mod bit_set_n;
