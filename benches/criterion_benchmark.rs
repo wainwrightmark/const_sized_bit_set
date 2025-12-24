@@ -87,7 +87,7 @@ pub fn from_fn_benchmark(c: &mut Criterion) {
 pub fn sum_benchmark(c: &mut Criterion) {
     fn sum_elements<const W: usize>(set: BitSetArray<W>) -> u32 {
         let mut sum = 0u32;
-        for x in set.into_iter() {
+        for x in set.iter() {
             sum = sum.wrapping_add(x);
         }
         sum
@@ -121,7 +121,7 @@ pub fn sum_all_back_benchmark(c: &mut Criterion) {
 
     fn sum_elements_back<const W: usize>(set: BitSetArray<W>) -> u32 {
         let mut sum = 0u32;
-        for x in set.into_iter().rev() {
+        for x in set.iter().rev() {
             sum = sum.wrapping_add(x);
         }
         sum
@@ -143,7 +143,7 @@ pub fn sum_all_back_benchmark(c: &mut Criterion) {
 pub fn sum_with_fold_benchmark(c: &mut Criterion) {
     fn sum_with_fold_elements<const W: usize>(set: BitSetArray<W>) -> u32 {
         #[allow(clippy::unnecessary_fold)]
-        set.into_iter().fold(0, |acc, x| acc + x)
+        set.iter().fold(0, |acc, x| acc + x)
     }
 
     let mut group = c.benchmark_group("Sum_with_fold_all");
@@ -173,7 +173,7 @@ pub fn sum_with_fold_all_back_benchmark(c: &mut Criterion) {
     let mut group = c.benchmark_group("Sum_with_fold_all_back");
 
     fn sum_with_fold_elements_back<const W: usize>(set: BitSetArray<W>) -> u32 {
-        set.into_iter().rfold(0, |acc, x| acc + x)
+        set.iter().rfold(0, |acc, x| acc + x)
     }
 
     group.throughput(criterion::Throughput::Elements(u64::BITS as u64));
@@ -190,13 +190,13 @@ pub fn sum_with_fold_all_back_benchmark(c: &mut Criterion) {
 
 pub fn nth_benchmark(c: &mut Criterion) {
     c.bench_function("nth_half", |b| {
-        b.iter(|| black_box(HALF_EMPTY_SET).into_iter().nth(black_box(10)));
+        b.iter(|| black_box(HALF_EMPTY_SET).iter().nth(black_box(10)));
     });
 
     c.bench_function("nth_all", |b| {
         b.iter(|| {
             black_box(BitSetArray::<4>::ALL)
-                .into_iter()
+                .iter()
                 .nth(black_box(100))
         });
     });
@@ -204,7 +204,7 @@ pub fn nth_benchmark(c: &mut Criterion) {
     c.bench_function("nth_back_half", |b| {
         b.iter(|| {
             black_box(HALF_EMPTY_SET)
-                .into_iter()
+                .iter()
                 .nth_back(black_box(10))
         });
     });
@@ -212,7 +212,7 @@ pub fn nth_benchmark(c: &mut Criterion) {
     c.bench_function("nth_back_all", |b| {
         b.iter(|| {
             black_box(BitSetArray::<4>::ALL)
-                .into_iter()
+                .iter()
                 .nth_back(black_box(100))
         });
     });
@@ -227,6 +227,7 @@ criterion_group!(
     sum_benchmark,
     from_fn_benchmark,
     sum_all_back_benchmark,
+    
 );
 criterion_main!(benches);
 

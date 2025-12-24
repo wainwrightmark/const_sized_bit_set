@@ -1,3 +1,5 @@
+use core::iter::FusedIterator;
+
 use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, BitSetArray, SetElement};
 
 pub trait BitSet: Sized {
@@ -25,6 +27,10 @@ pub trait BitSet: Sized {
     fn pop(&mut self) -> Option<SetElement>;
 
     fn pop_last(&mut self) -> Option<SetElement>;
+
+    fn iter<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = SetElement> + Clone + FusedIterator + DoubleEndedIterator + ExactSizeIterator;
 
     /// Sets the `element` to `bit`.
     /// Returns whether the element was changed
@@ -141,12 +147,9 @@ pub trait BitSet: Sized {
 
     /// Return the set of minimal members according to a function
     #[must_use]
-    fn min_set_by_key<K: Ord>(&self, f: impl Fn(SetElement) -> K) -> Self
-    where
-        Self: Clone + IntoIterator<Item = SetElement>,
-    {
+    fn min_set_by_key<K: Ord>(&self, f: impl Fn(SetElement) -> K) -> Self {
         let mut result_set = Self::EMPTY;
-        let mut iter = self.clone().into_iter();
+        let mut iter = self.iter();
 
         let Some(first) = iter.next() else {
             return result_set;
@@ -201,9 +204,11 @@ pub trait BitSet: Sized {
     fn retain<F>(&mut self, mut f: F)
     where
         F: FnMut(&SetElement) -> bool,
-        Self: Clone + IntoIterator<Item = SetElement>,
+        Self: Clone
     {
-        let iter = self.clone().into_iter();
+        //todo specialize this implementation for BitSetVec - no clone needed
+        let clone = self.clone();
+        let iter = clone.iter();
         for x in iter {
             if f(&x) {
                 self.remove(x);
@@ -228,7 +233,7 @@ pub trait BitSet: Sized {
     }
 
     #[must_use]
-    fn index_of_subset(self, subset: &Self) -> u32 {
+    fn index_of_subset(&self, subset: &Self) -> u32 {
         let n_c_k = crate::n_choose_k::NChooseK::new(self.count(), subset.count());
 
         let Some(mut n_c_k) = n_c_k.try_decrement_n() else {
@@ -236,10 +241,8 @@ pub trait BitSet: Sized {
         };
 
         let mut total = 0;
-
-        //todo use iter() to remove clone requirement
-        let mut ss = self;
-        while let Some(index) = ss.pop_last() {
+        let mut iter = self.iter();
+        while let Some(index) = iter.next_back() {
             if subset.contains(index) {
                 total += n_c_k.value();
                 match n_c_k.try_decrement_k() {
@@ -257,7 +260,7 @@ pub trait BitSet: Sized {
     }
 
     #[must_use]
-    fn get_subset(self, subset_size: u32, index: u32) -> Self {
+    fn get_subset(&self, subset_size: u32, index: u32) -> Self {
         let n_c_k = crate::n_choose_k::NChooseK::new(self.count(), subset_size);
 
         // The rest of this algorithm calculates the the subsets in reverse order (i.e. index 0 is the largest subset)
@@ -269,9 +272,10 @@ pub trait BitSet: Sized {
             return new_set;
         };
 
-        let mut set_remaining = self;
+        let mut iter = self.iter();
 
-        while let Some(next) = set_remaining.pop_last() {
+
+        while let Some(next) = iter.next_back() {
             if let Some(new_index) = index.checked_sub(n_c_k.value()) {
                 index = new_index;
             } else {
@@ -284,7 +288,9 @@ pub trait BitSet: Sized {
             match n_c_k.try_decrement_n() {
                 Some(r) => n_c_k = r,
                 None => {
-                    new_set.union_with(&set_remaining);
+                    //todo do union here
+                    iter.fold(&mut new_set, |acc,x| {acc.insert(x); acc});
+                    
                     return new_set;
                 }
             }
@@ -390,6 +396,16 @@ macro_rules! impl_bit_set_trait_methods {
 
         fn largest_element_less_than(&self, index: SetElement) -> Option<SetElement> {
             self.largest_element_less_than_const(index)
+        }
+
+        fn iter<'a>(
+            &'a self,
+        ) -> impl Iterator<Item = SetElement>
+        + Clone
+        + FusedIterator
+        + DoubleEndedIterator
+        + ExactSizeIterator {
+            self.iter_const()
         }
     };
 }

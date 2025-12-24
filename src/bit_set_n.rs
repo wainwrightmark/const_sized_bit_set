@@ -21,6 +21,12 @@ macro_rules! define_bit_set_n {
             pub const fn is_empty_const(&self)-> bool{
                 self.0 == 0
             }
+            
+            #[must_use]
+            #[inline]
+            pub const fn is_all_const(&self)-> bool{
+                self.0 == Self::ALL.0
+            }
 
             /// Returns the number of elements in the set
             #[must_use]
@@ -324,6 +330,10 @@ macro_rules! define_bit_set_n {
                     return None;
                 }
                 return Some(index - 1 - inner.leading_zeros());
+            }
+
+            pub const fn iter_const(&self)-> crate::iterator::BitSetIterator<Self> {
+                crate::iterator::BitSetIterator::new(*self)
             }
         }
 

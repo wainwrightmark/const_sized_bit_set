@@ -23,7 +23,7 @@ const HALF_EMPTY_SET: BitSetArray<4> = BitSetArray::from_inner_const(
 #[bench::empty(EMPTY_SET)]
 #[bench::random(RANDOM_SET)]
 fn sum_all_elements_with_sum(set: BitSetArray<4>) -> u32 {
-    black_box(set).into_iter().sum()
+    black_box(set).iter().sum()
 }
 
 #[library_benchmark]
@@ -33,7 +33,8 @@ fn sum_all_elements_with_sum(set: BitSetArray<4>) -> u32 {
 #[bench::random(RANDOM_SET)]
 fn sum_all_elements_next(set: BitSetArray<4>) -> u32 {
     let mut acc = 0u32;
-    let iter = black_box(set).into_iter();
+    let binding = black_box(set);
+    let iter = binding.iter();
     for x in iter {
         acc = acc.wrapping_add(x);
     }
@@ -47,7 +48,8 @@ fn sum_all_elements_next(set: BitSetArray<4>) -> u32 {
 #[bench::random(RANDOM_SET)]
 fn sum_all_elements_next_back(set: BitSetArray<4>) -> u32 {
     let mut acc = 0u32;
-    let mut iter = black_box(set).into_iter();
+    let binding = black_box(set);
+    let mut iter = binding.iter();
     while let Some(x) = iter.next_back() {
         acc = acc.wrapping_add(x);
     }
@@ -61,7 +63,7 @@ fn sum_all_elements_next_back(set: BitSetArray<4>) -> u32 {
 #[bench::random(RANDOM_SET)]
 fn sum_all_elements_fold(set: BitSetArray<4>) -> u32 {
     black_box(set)
-        .into_iter()
+        .iter()
         .fold(0, |acc, x| acc.wrapping_add(x))
 }
 
@@ -72,7 +74,7 @@ fn sum_all_elements_fold(set: BitSetArray<4>) -> u32 {
 #[bench::random(RANDOM_SET)]
 fn sum_all_elements_rfold(set: BitSetArray<4>) -> u32 {
     black_box(set)
-        .into_iter()
+        .iter()
         .rfold(0, |acc, x| acc.wrapping_add(x))
 }
 
@@ -82,7 +84,7 @@ fn sum_all_elements_rfold(set: BitSetArray<4>) -> u32 {
 #[bench::empty_100(EMPTY_SET, 100)]
 #[bench::random_100(RANDOM_SET, 100)]
 fn nth_forward(set: BitSetArray<4>, n: usize) -> Option<u32> {
-    black_box(set).into_iter().nth(black_box(n))
+    black_box(set).iter().nth(black_box(n))
 }
 
 #[library_benchmark]
@@ -91,7 +93,7 @@ fn nth_forward(set: BitSetArray<4>, n: usize) -> Option<u32> {
 #[bench::empty_100(EMPTY_SET, 100)]
 #[bench::random_100(RANDOM_SET, 100)]
 fn nth_back(set: BitSetArray<4>, n: usize) -> Option<u32> {
-    black_box(set).into_iter().nth_back(black_box(n))
+    black_box(set).iter().nth_back(black_box(n))
 }
 
 #[library_benchmark]

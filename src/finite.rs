@@ -44,6 +44,8 @@ pub trait FiniteBitSet: BitSet {
 
         result
     }
+
+    fn is_all(&self)-> bool;
 }
 
 macro_rules! impl_bit_set_finite {
@@ -58,6 +60,10 @@ macro_rules! impl_bit_set_finite {
 
             fn reverse(&mut self) {
                 self.reverse_const();
+            }
+
+            fn is_all(&self)-> bool{
+                self.is_all_const()
             }
         }
     };
@@ -79,5 +85,9 @@ impl<const WORDS: usize> FiniteBitSet for BitSetArray<WORDS> {
 
     fn reverse(&mut self) {
         self.reverse_const();
+    }
+
+    fn is_all(&self)-> bool {
+        self.is_all_const()
     }
 }

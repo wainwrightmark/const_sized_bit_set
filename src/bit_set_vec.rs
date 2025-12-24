@@ -1,4 +1,5 @@
 use crate::prelude::BitSet;
+use crate::slice_iter::SliceIter;
 use crate::{BitSet64, SetElement};
 use core::fmt::{Debug, Write};
 use core::iter::FusedIterator;
@@ -20,7 +21,7 @@ impl core::fmt::Display for BitSetVec {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.write_char('[')?;
         let mut write_commas: bool = false;
-        for x in self.clone() {
+        for x in self.iter() {
             if write_commas {
                 f.write_char(',')?;
                 f.write_char(' ')?;
@@ -88,7 +89,7 @@ impl BitSetVec {
     #[inline]
     #[must_use]
     #[expect(clippy::cast_possible_truncation)]
-    fn to_full_set_element(element: SetElement, word_index: usize) -> SetElement {        
+    fn to_full_set_element(element: SetElement, word_index: usize) -> SetElement {
         element + (word_index as u32 * WORD_BITS)
     }
 
@@ -181,6 +182,13 @@ impl BitSet for BitSetVec {
             }
         }
         None
+    }
+
+    fn iter<'a>(
+        &'a self,
+    ) -> impl Iterator<Item = SetElement> + Clone + FusedIterator + DoubleEndedIterator + ExactSizeIterator
+    {
+        SliceIter::new(&self.0)
     }
 
     fn insert(&mut self, element: SetElement) -> bool {
@@ -402,271 +410,6 @@ impl FromIterator<u32> for BitSetVec {
     }
 }
 
-impl IntoIterator for BitSetVec {
-    type Item = SetElement;
-
-    type IntoIter = BitSetIter;
-
-    #[inline]
-    fn into_iter(self) -> Self::IntoIter {
-        BitSetIter { inner: self }
-    }
-}
-
-#[must_use]
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct BitSetIter {
-    inner: BitSetVec,
-}
-
-impl ExactSizeIterator for BitSetIter {
-    fn len(&self) -> usize {
-        self.inner.count() as usize
-    }
-}
-impl FusedIterator for BitSetIter {}
-
-impl Iterator for BitSetIter {
-    type Item = u32;
-
-    #[inline]
-    fn next(&mut self) -> Option<Self::Item> {
-        self.inner.pop()
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        let c = self.len();
-        (c, Some(c))
-    }
-
-    #[inline]
-    fn count(self) -> usize
-    where
-        Self: Sized,
-    {
-        self.len()
-    }
-
-    #[inline]
-    fn last(self) -> Option<Self::Item>
-    where
-        Self: Sized,
-    {
-        self.inner.last()
-    }
-
-    #[inline]
-    fn max(self) -> Option<Self::Item>
-    where
-        Self: Sized,
-        Self::Item: Ord,
-    {
-        self.last()
-    }
-
-    #[inline]
-    fn min(mut self) -> Option<Self::Item>
-    where
-        Self: Sized,
-        Self::Item: Ord,
-    {
-        self.next()
-    }
-
-    #[inline]
-    fn nth(&mut self, n: usize) -> Option<Self::Item> {
-        let mut word_index = 0;
-        #[expect(clippy::cast_possible_truncation)]
-        let mut n = n as u32;
-        while word_index < self.inner.0.len() {
-            if let Some(new_n) = n.checked_sub(self.inner.0[word_index].count_ones()) {
-                n = new_n;
-                self.inner.0[word_index] = 0;
-                word_index += 1;
-                //continue loop
-            } else {
-                let mut shift = 0;
-                let mut word = self.inner.0[word_index];
-                loop {
-                    let tz = word.trailing_zeros();
-                    word >>= tz;
-                    shift += tz;
-                    let to = word.trailing_ones();
-                    if let Some(new_n) = n.checked_sub(to) {
-                        n = new_n;
-                        word >>= to;
-                        shift += to;
-                    } else {
-                        word >>= n + 1;
-                        let r = (shift + n) + (word_index as u32 * (WORD_BITS));
-
-                        let word = word.wrapping_shl(shift + n + 1);
-                        self.inner.0[word_index] = word;
-
-                        return Some(r);
-                    }
-                }
-            }
-        }
-        None
-    }
-
-    #[inline]
-    fn fold<B, F>(self, init: B, mut f: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        let mut accum = init;
-
-        for index in 0..self.inner.0.len() {
-            let mut word = self.inner.0[index];
-            let index = index as u32;
-            let mut offset = index * (WORD_BITS);
-            if word == u64::MAX {
-                for v in offset..(offset + (WORD_BITS)) {
-                    accum = f(accum, v);
-                }
-            } else {
-                while word != 0 {
-                    let tz = word.trailing_zeros();
-                    word >>= tz;
-                    offset += tz;
-                    let trailing_ones = word.trailing_ones();
-                    for _ in 0..trailing_ones {
-                        accum = f(accum, offset);
-                        offset += 1;
-                    }
-                    word >>= trailing_ones;
-                }
-            }
-        }
-        accum
-    }
-
-    #[inline]
-    fn sum<S>(self) -> S
-    where
-        Self: Sized,
-        S: core::iter::Sum<Self::Item>,
-    {
-        let mut total = 0u32;
-
-        for index in 0..self.inner.0.len() {
-            let word = self.inner.0[index];
-            #[expect(clippy::cast_possible_truncation)]
-            let mut multiplier = index as u32 * WORD_BITS;
-
-            if word == u64::MAX {
-                total += word.count_ones() * multiplier;
-                total += 2016; //sum of 0..64
-            } else {
-                let mut value = word;
-
-                while value != 0 {
-                    let zeros = value.trailing_zeros();
-                    value >>= zeros;
-                    multiplier += zeros;
-                    let ones = value.trailing_ones(); //there must be some or we wouldn't have shifted right
-                    value >>= ones; //cannot overflow as we checked for u64::MAX
-
-                    total += (ones * (ones + multiplier + multiplier - 1)) / 2;
-
-                    multiplier += ones;
-                }
-            }
-        }
-
-        S::sum(core::iter::once(total))
-    }
-
-    fn is_sorted(self) -> bool
-    where
-        Self: Sized,
-        Self::Item: PartialOrd,
-    {
-        true
-    }
-
-    //todo find a fast way to do Sum
-    //todo find a fast way to do Product
-}
-
-impl DoubleEndedIterator for BitSetIter {
-    #[inline]
-    fn next_back(&mut self) -> Option<Self::Item> {
-        self.inner.pop_last()
-    }
-
-    fn nth_back(&mut self, n: usize) -> Option<Self::Item> {
-        let mut word_index = self.inner.0.len().checked_sub(1)?;
-        #[expect(clippy::cast_possible_truncation)]
-        let mut n = n as u32;
-        loop {
-            if let Some(new_n) = n.checked_sub(self.inner.0[word_index].count_ones()) {
-                n = new_n;
-                self.inner.0[word_index] = 0;
-                word_index = word_index.checked_sub(1)?;
-            } else {
-                let mut shift = 0;
-                let mut word = self.inner.0[word_index];
-                loop {
-                    let lz = word.leading_zeros();
-                    word <<= lz;
-                    shift += lz;
-                    let leading_ones = word.leading_ones();
-                    if let Some(new_n) = n.checked_sub(leading_ones) {
-                        n = new_n;
-                        word <<= leading_ones;
-                        shift += leading_ones;
-                    } else {
-                        word <<= n + 1;
-                        let r = (WORD_BITS - (shift + n + 1)) + (word_index as u32 * (WORD_BITS));
-
-                        word = word.wrapping_shr(shift + n + 1);
-                        self.inner.0[word_index] = word;
-
-                        return Some(r);
-                    }
-                }
-            }
-        }
-    }
-
-    fn rfold<B, F>(self, init: B, mut f: F) -> B
-    where
-        Self: Sized,
-        F: FnMut(B, Self::Item) -> B,
-    {
-        let mut accum = init;
-        let mut index = self.inner.0.len() as u32;
-        for mut word in self.inner.0.into_iter().rev() {
-            let mut offset = index * (WORD_BITS);
-
-            if word == u64::MAX {
-                for v in ((offset - (WORD_BITS))..offset).rev() {
-                    accum = f(accum, v);
-                }
-            } else {
-                while word != 0 {
-                    let lz = word.leading_zeros();
-                    word <<= lz;
-                    offset -= lz;
-                    let leading_ones = word.leading_ones();
-                    for _ in 0..leading_ones {
-                        offset -= 1;
-                        accum = f(accum, offset);
-                    }
-                    word <<= leading_ones;
-                }
-            }
-            index -= 1;
-        }
-        accum
-    }
-}
-
 #[cfg(test)]
 pub mod tests {
     use crate::bit_set_trait::BitSet;
@@ -678,7 +421,7 @@ pub mod tests {
         let evens = BitSetVec::from_fn(256, |x| x % 2 == 0);
 
         assert_eq!(128, evens.count());
-        let iter = evens.into_iter();
+        let iter = evens.iter();
         assert_eq!(iter.len(), 128);
 
         let items: Vec<u32> = iter.collect();
@@ -695,7 +438,7 @@ pub mod tests {
 
         assert_eq!(52, set.count());
 
-        let iter = set.into_iter();
+        let iter = set.iter();
         assert_eq!(iter.len(), 52);
         assert_eq!(iter.size_hint(), (52, Some(52)));
 
@@ -727,7 +470,7 @@ pub mod tests {
 
         assert_eq!(52, set.count());
 
-        let iter = set.into_iter();
+        let iter = set.iter();
         assert_eq!(iter.len(), 52);
         assert_eq!(iter.size_hint(), (52, Some(52)));
 
@@ -793,7 +536,7 @@ pub mod tests {
         expected.remove(&2);
         expected.remove(&64);
 
-        let actual: Vec<_> = my_set.into_iter().collect();
+        let actual: Vec<_> = my_set.iter().collect();
         let expected: Vec<_> = expected.into_iter().collect();
 
         assert_eq!(actual, expected);
@@ -815,7 +558,7 @@ pub mod tests {
         expected.remove(&2);
         expected.remove(&64);
 
-        let actual: Vec<_> = my_set.into_iter().collect();
+        let actual: Vec<_> = my_set.iter().collect();
         let expected: Vec<_> = expected.into_iter().collect();
 
         assert_eq!(actual, expected);
@@ -836,7 +579,7 @@ pub mod tests {
         expected.remove(&2);
         expected.remove(&64);
 
-        let actual: Vec<_> = my_set.into_iter().collect();
+        let actual: Vec<_> = my_set.iter().collect();
         let expected: Vec<_> = expected.into_iter().collect();
 
         assert_eq!(actual, expected);
@@ -1008,14 +751,14 @@ pub mod tests {
     #[test]
     fn test_iter_last4() {
         let set = BitSetVec::from_fn(256, |x| x % 7 == 0);
-        let iter = set.into_iter();
+        let iter = set.iter();
         assert_eq!(iter.last(), Some(252));
     }
 
     #[test]
     fn test_iter_max4() {
         let set = BitSetVec::from_fn(256, |x| x % 7 == 0 && x < 140);
-        let iter = set.into_iter();
+        let iter = set.iter();
         let max = Iterator::max(iter);
         assert_eq!(max, Some(133));
     }
@@ -1023,7 +766,7 @@ pub mod tests {
     #[test]
     fn test_iter_min4() {
         let set = BitSetVec::from_fn(256, |x| x > 64 && x % 7 == 0);
-        let iter = set.into_iter();
+        let iter = set.iter();
         let min = Iterator::min(iter);
         assert_eq!(min, Some(70));
     }
@@ -1033,7 +776,7 @@ pub mod tests {
         let set = BitSetVec::from_fn(256, |x| x % 7 == 0);
         let expected_set = Vec::from_iter((0..256u32).filter(|x| x % 7 == 0));
 
-        let mut iter = set.into_iter();
+        let mut iter = set.iter();
         let mut expected_iter = expected_set.into_iter();
 
         for n in [0, 1, 10, 2, 3, 0, 0, 2, 3] {
@@ -1048,7 +791,7 @@ pub mod tests {
         let set = BitSetVec::from_fn(64, |x| x == 63);
         let expected_set = Vec::from_iter((0..64u32).filter(|x| *x == 63));
 
-        let mut iter = set.into_iter();
+        let mut iter = set.iter();
         let mut expected_iter = expected_set.into_iter();
 
         for n in [0, 1] {
@@ -1063,7 +806,7 @@ pub mod tests {
         let set = BitSetVec::from_fn(256, |x| x % 7 == 0);
         let expected_set = Vec::from_iter((0..256u32).filter(|x| x % 7 == 0));
 
-        let mut iter = set.into_iter();
+        let mut iter = set.iter();
         let mut expected_iter = expected_set.into_iter();
 
         for n in [0, 1, 10, 2, 3, 0, 0, 2, 3] {
@@ -1076,7 +819,7 @@ pub mod tests {
     #[test]
     fn test_iter_fold4() {
         let set = BitSetVec::from_fn(256, |x| x % 7 == 0);
-        let iter = set.into_iter();
+        let iter = set.iter();
         let fold_result = iter.fold(13, |acc, x| acc + x);
 
         assert_eq!(fold_result, 4675);
@@ -1084,7 +827,7 @@ pub mod tests {
         let complete_set = BitSetVec::from_first_n(256);
 
         assert_eq!(
-            complete_set.into_iter().fold(Vec::new(), |mut vec, v| {
+            complete_set.iter().fold(Vec::new(), |mut vec, v| {
                 vec.push(v);
                 vec
             }),
@@ -1095,7 +838,7 @@ pub mod tests {
     #[test]
     fn test_iter_rfold4() {
         let set = BitSetVec::from_fn(256, |x| x % 7 == 0);
-        let iter = set.into_iter();
+        let iter = set.iter();
         let fold_result = iter.rfold(13, |acc, x| acc + x);
 
         assert_eq!(fold_result, 4675);
@@ -1103,7 +846,7 @@ pub mod tests {
         let complete_set = BitSetVec::from_first_n(256);
 
         assert_eq!(
-            complete_set.into_iter().rfold(Vec::new(), |mut vec, v| {
+            complete_set.iter().rfold(Vec::new(), |mut vec, v| {
                 vec.push(v);
                 vec
             }),
@@ -1116,13 +859,13 @@ pub mod tests {
         let set = BitSetVec::from_fn(256, |x| x % 7 == 0 || x % 4 == 0);
         let expected_set = Vec::from_iter((0..256u32).filter(|x| x % 7 == 0 || x % 4 == 0));
 
-        let sum: u32 = set.into_iter().sum();
+        let sum: u32 = set.iter().sum();
         let expected_sum: u32 = expected_set.into_iter().sum();
 
         assert_eq!(sum, expected_sum);
 
         assert_eq!(
-            BitSetVec::from_first_n(256).into_iter().sum::<u32>(),
+            BitSetVec::from_first_n(256).iter().sum::<u32>(),
             (0..256).sum::<u32>()
         );
     }
@@ -1132,7 +875,7 @@ pub mod tests {
         let evens = BitSetVec::from_fn(64, |x| x % 2 == 0);
 
         assert_eq!(32, evens.count());
-        let iter = evens.into_iter();
+        let iter = evens.iter();
         assert_eq!(iter.len(), 32);
 
         let items: Vec<u32> = iter.collect();
@@ -1149,7 +892,7 @@ pub mod tests {
 
         assert_eq!(13, set.count());
 
-        let iter = set.into_iter();
+        let iter = set.iter();
         assert_eq!(iter.len(), 13);
         assert_eq!(iter.size_hint(), (13, Some(13)));
 
@@ -1166,7 +909,7 @@ pub mod tests {
 
         assert_eq!(13, set.count());
 
-        let iter = set.into_iter();
+        let iter = set.iter();
         assert_eq!(iter.len(), 13);
         assert_eq!(iter.size_hint(), (13, Some(13)));
 
@@ -1231,7 +974,7 @@ pub mod tests {
         expected.remove(&2);
         expected.remove(&32);
 
-        let actual: Vec<_> = my_set.into_iter().collect();
+        let actual: Vec<_> = my_set.iter().collect();
         let expected: Vec<_> = expected.into_iter().collect();
 
         assert_eq!(actual, expected);
@@ -1251,7 +994,7 @@ pub mod tests {
         expected.remove(&2);
         expected.remove(&32);
 
-        let actual: Vec<_> = my_set.into_iter().collect();
+        let actual: Vec<_> = my_set.iter().collect();
         let expected: Vec<_> = expected.into_iter().collect();
 
         assert_eq!(actual, expected);
