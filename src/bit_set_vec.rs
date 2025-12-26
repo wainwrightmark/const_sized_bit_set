@@ -202,6 +202,16 @@ impl BitSet for BitSetVec {
         }
     }
 
+    #[inline]
+    fn toggle(&mut self, element: SetElement) -> bool {
+        let (word, shift) = Self::to_word_and_shift(element);
+        let mask = 1u64 << shift;
+
+        let word = self.get_or_create_word_n(word);
+        *word = *word ^ mask;
+        *word & mask != 0
+    }
+
     fn swap_bits(&mut self, i: u32, j: u32) {
         //todo improve performance???
         let i_bit = self.contains(i);

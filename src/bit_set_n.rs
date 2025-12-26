@@ -100,6 +100,21 @@ macro_rules! define_bit_set_n {
                 r
             }
 
+            /// Toggle the value of an element.
+            /// Returns the new value.
+            #[inline]
+            pub const fn toggle_const(&mut self, element: SetElement) -> bool {
+                debug_assert!(
+                    element < Self::CAPACITY,
+                    "Element is too big to insert into bitset"
+                );
+
+                let mask = 1 << element;
+
+                self.0 ^= mask;
+                self.0 & mask != 0
+            }
+
             /// Remove an element from the set
             /// Returns whether the element was removed (was previously present)
             #[inline]

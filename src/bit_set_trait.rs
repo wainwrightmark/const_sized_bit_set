@@ -57,6 +57,10 @@ pub trait BitSet: Sized {
     /// Returns whether the element was inserted (it was not already present)
     fn insert(&mut self, element: SetElement) -> bool;
 
+    /// Toggle the value of an element.
+    /// Returns the new value.
+    fn toggle(&mut self, element: SetElement)-> bool;
+
     #[must_use]
     fn with_inserted(&self, element: SetElement) -> Self
     where
@@ -348,6 +352,10 @@ macro_rules! impl_bit_set_trait_methods {
 
         fn remove(&mut self, element: SetElement) -> bool {
             self.remove_const(element)
+        }
+
+        fn toggle(&mut self, element: SetElement)-> bool{
+            self.toggle_const(element)
         }
 
         fn swap_bits(&mut self, i: u32, j: u32) {

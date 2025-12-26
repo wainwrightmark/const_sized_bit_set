@@ -127,6 +127,8 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
         self.0 = Self::EMPTY.0;
     }
 
+    //todo rename the arguments of all these functions - use Element: SetElement
+
     /// Create a set of the elements 0..n
     #[must_use]
     #[inline]
@@ -194,6 +196,19 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
 
         self.0[word] |= mask;
         r
+    }
+
+    /// Toggle the value of an element.
+    /// Returns the new value.
+    /// 
+    /// PANICS if `value` is out of range
+    #[inline]
+    pub const fn toggle_const(&mut self, element: SetElement)-> bool{
+        let (word, shift) = Self::to_word_and_shift(element);
+        let mask = 1u64 << shift;
+
+        self.0[word] ^= mask;
+        self.0[word] & mask != 0
     }
 
     /// If the set contains `value`, removes it from the set.
