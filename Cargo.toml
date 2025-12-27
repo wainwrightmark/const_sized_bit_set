@@ -11,7 +11,7 @@ keywords = ["bitset", "no_std"]
 categories = []
 license = "MIT"
 exclude = []
-rust-version = "1.85"
+rust-version = "1.92"
 
 
 [dependencies]

@@ -13,7 +13,6 @@ pub mod finite;
 pub mod iterator;
 pub mod n_choose_k;
 pub mod set_size_n_iter;
-pub mod shiftable;
 pub mod slice_iter;
 pub mod subset_iter;
 
@@ -28,7 +27,6 @@ pub mod prelude {
     #[cfg(any(test, feature = "std"))]
     pub use crate::bit_set_vec::BitSetVec;
     pub use crate::finite::FiniteBitSet;
-    pub use crate::shiftable::ShiftableBitSet;
 }
 
 #[inline]

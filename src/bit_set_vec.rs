@@ -93,6 +93,12 @@ impl BitSetVec {
     fn to_full_set_element(element: SetElement, word_index: usize) -> SetElement {
         element + (word_index as u32 * WORD_BITS)
     }
+
+    #[inline]
+    fn tidy_end(&mut self){
+        let zeros_at_end = self.0.iter().rev().take_while(|&&x|x == 0).count();
+        self.0.truncate(self.0.len() - zeros_at_end);
+    }
 }
 
 const WORD_BITS: u32 = u64::BITS;
@@ -412,6 +418,55 @@ impl BitSet for BitSetVec {
             word_index += 1;
         }
     }
+
+    fn shift_right(&mut self, n: SetElement) {
+        let (words_shift, bits_shift) = Self::to_word_and_shift(n);
+
+        //note we rotate left actually because the bit ordering is opposite to the array ordering
+        self.0.rotate_left(words_shift);
+        self.0.truncate(self.0.len() - words_shift);
+
+        if bits_shift > 0 {
+            let bits_shift_inverse = u64::BITS - bits_shift;
+            let mut index_1 = 0;
+            loop {
+                self.0[index_1] >>= bits_shift;
+                let index_2 = index_1 + 1;
+                if index_2 < self.0.len() {
+                    self.0[index_1] |= self.0[index_2] << bits_shift_inverse;
+                    index_1 = index_2;
+                } else {
+                    break;
+                }
+            }
+        }
+        self.tidy_end();
+    }
+
+    fn shift_left(&mut self, n: SetElement) {
+        let (words_shift, bits_shift) = Self::to_word_and_shift(n);
+
+        self.0.extend(std::iter::repeat_n(0, words_shift + (if bits_shift == 0 {0} else{1})));
+        //note we rotate right actually because the bit ordering is opposite to the array ordering
+        self.0.rotate_right(words_shift);
+        
+
+        if bits_shift > 0 {
+            let bits_shift_inverse = u64::BITS - bits_shift;
+            let mut index_1 = self.0.len().saturating_sub(1);
+            loop {
+                self.0[index_1] <<= bits_shift;
+
+                let Some(index_2) = index_1.checked_sub(1) else {
+                    break;
+                };
+                self.0[index_1] |= self.0[index_2] >> bits_shift_inverse;
+                index_1 = index_2;
+            }
+        }
+        self.tidy_end();
+    }
+
 }
 
 impl Extend<usize> for BitSetVec {
@@ -1313,41 +1368,41 @@ pub mod tests {
         assert_eq!(BitSetVec::from_first_n(128).trailing_ones(), 128);
     }
 
-    // #[test]
-    // fn test_shift_right() {
-    //     let mut set = BitSetVec::from_fn(256, |x| x % 3 == 0);
-    //     let expected = BitSetVec::from_fn(256, |x| x % 3 == 1 && x < 128);
+    #[test]
+    fn test_shift_right() {
+        let mut set = BitSetVec::from_fn(256, |x| x % 3 == 0);
+        let expected = BitSetVec::from_fn(256, |x| x % 3 == 1 && x < 128);
 
-    //     set.shift_right(128);
+        set.shift_right(128);
 
-    //     assert_eq!(set, expected);
+        assert_eq!(set, expected);
 
-    //     let mut set2 = BitSetVec::from_fn(256, |x| x % 3 == 0);
+        let mut set2 = BitSetVec::from_fn(256, |x| x % 3 == 0);
 
-    //     //should be the same as before, just in two separate shifts
-    //     set2.shift_right(120);
-    //     set2.shift_right(8);
+        //should be the same as before, just in two separate shifts
+        set2.shift_right(120);
+        set2.shift_right(8);
 
-    //     assert_eq!(set2, expected);
-    // }
+        assert_eq!(set2, expected);
+    }
 
-    // #[test]
-    // fn test_shift_left() {
-    //     let mut set = BitSetVec::from_fn(256, |x| x % 3 == 0);
-    //     let expected = BitSetVec::from_fn(256, |x| x % 3 == 2 && x >= 128);
+    #[test]
+    fn test_shift_left() {
+        let mut set = BitSetVec::from_fn(256, |x| x % 3 == 0);
+        let expected = BitSetVec::from_fn(384, |x| x % 3 == 2 && x >= 128);
 
-    //     set.shift_left(128);
+        set.shift_left(128);
 
-    //     assert_eq!(set, expected);
+        assert_eq!(set, expected);
 
-    //     let mut set2 = BitSetVec::from_fn(256, |x| x % 3 == 0);
+        let mut set2 = BitSetVec::from_fn(256, |x| x % 3 == 0);
 
-    //     //should be the same as before, just in two separate shifts
-    //     set2.shift_left(120);
-    //     set2.shift_left(8);
+        //should be the same as before, just in two separate shifts
+        set2.shift_left(120);
+        set2.shift_left(8);
 
-    //     assert_eq!(set2, expected);
-    // }
+        assert_eq!(set2, expected);
+    }
 
     #[test]
     fn test_largest_element_less_than() {

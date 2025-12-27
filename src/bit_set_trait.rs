@@ -59,7 +59,7 @@ pub trait BitSet: Sized {
 
     /// Toggle the value of an element.
     /// Returns the new value.
-    fn toggle(&mut self, element: SetElement)-> bool;
+    fn toggle(&mut self, element: SetElement) -> bool;
 
     #[must_use]
     fn with_inserted(&self, element: SetElement) -> Self
@@ -298,6 +298,16 @@ pub trait BitSet: Sized {
     ///Returns the number of ones at the beginning of the set
     /// See `FiniteBitSet` for `trailing_zeros`, `leading_ones` and `leading_zeros`
     fn trailing_ones(&self) -> u32;
+
+    /// Equivalent to >>=
+    /// Reduce the value of every element in the set by n.
+    /// Elements no longer in range are removed.
+    fn shift_right(&mut self, n: SetElement);
+
+    /// Equivalent to <<=
+    /// Increase the value of every element in the set by n.
+    /// For finite sets, elements no longer in range are removed.
+    fn shift_left(&mut self, n: SetElement);
 }
 
 macro_rules! impl_bit_set_trait_methods {
@@ -354,7 +364,7 @@ macro_rules! impl_bit_set_trait_methods {
             self.remove_const(element)
         }
 
-        fn toggle(&mut self, element: SetElement)-> bool{
+        fn toggle(&mut self, element: SetElement) -> bool {
             self.toggle_const(element)
         }
 
@@ -416,6 +426,16 @@ macro_rules! impl_bit_set_trait_methods {
         {
             self.iter_const()
         }
+
+        fn shift_right(&mut self, n: SetElement)
+        {
+            self.shift_right_const(n)
+        }
+
+        fn shift_left(&mut self, n: SetElement)
+        {
+            self.shift_left_const(n)
+        }        
     };
 }
 

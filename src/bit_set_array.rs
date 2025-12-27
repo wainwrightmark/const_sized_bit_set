@@ -1,5 +1,4 @@
 use crate::finite::FiniteBitSet;
-use crate::shiftable::ShiftableBitSet;
 use crate::slice_iter::SliceIter;
 use crate::{BitSet64, SetElement};
 use core::fmt::{Debug, Write};
@@ -167,7 +166,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     }
 
     #[must_use]
-    pub const fn iter_const(&self) -> SliceIter {
+    pub const fn iter_const<'a>(&'a self) -> SliceIter<'a> {
         SliceIter::new(&self.0)
     }
 
@@ -200,10 +199,10 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
 
     /// Toggle the value of an element.
     /// Returns the new value.
-    /// 
+    ///
     /// PANICS if `value` is out of range
     #[inline]
-    pub const fn toggle_const(&mut self, element: SetElement)-> bool{
+    pub const fn toggle_const(&mut self, element: SetElement) -> bool {
         let (word, shift) = Self::to_word_and_shift(element);
         let mask = 1u64 << shift;
 
@@ -623,6 +622,71 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
 
         total
     }
+
+    /// Equivalent to >>=
+    /// Reduce the value of every element in the set by n.
+    /// Elements no longer in range are removed.
+    pub const fn shift_right_const(&mut self, n: SetElement) {
+        let words_shift = (n / u64::BITS) as usize;
+        let bits_shift = n % u64::BITS;
+
+        //note we rotate left actually because the bit ordering is opposite to the array ordering
+        self.0.rotate_left(words_shift);
+        {
+            let mut i = WORDS - words_shift;
+            while i < WORDS {
+                self.0[i] = 0;
+                i += 1;
+            }
+        }
+
+        if bits_shift > 0 {
+            let bits_shift_inverse = u64::BITS - bits_shift;
+            let mut index_1 = 0;
+            loop {
+                self.0[index_1] >>= bits_shift;
+                let index_2 = index_1 + 1;
+                if index_2 < WORDS {
+                    self.0[index_1] |= self.0[index_2] << bits_shift_inverse;
+                    index_1 = index_2;
+                } else {
+                    break;
+                }
+            }
+        }
+    }
+
+    /// Equivalent to <<=
+    /// Increase the value of every element in the set by n.
+    /// For finite sets, elements no longer in range are removed.
+    pub const fn shift_left_const(&mut self, n: SetElement) {
+        let words_shift = (n / u64::BITS) as usize;
+        let bits_shift = n % u64::BITS;
+
+        //note we rotate right actually because the bit ordering is opposite to the array ordering
+        self.0.rotate_right(words_shift);
+        {
+            let mut i = 0;
+            while i < words_shift {
+                self.0[i] = 0;
+                i += 1;
+            }
+        }
+
+        if bits_shift > 0 {
+            let bits_shift_inverse = u64::BITS - bits_shift;
+            let mut index_1 = WORDS.saturating_sub(1);
+            loop {
+                self.0[index_1] <<= bits_shift;
+
+                let Some(index_2) = index_1.checked_sub(1) else {
+                    break;
+                };
+                self.0[index_1] |= self.0[index_2] >> bits_shift_inverse;
+                index_1 = index_2;
+            }
+        }
+    }
 }
 
 impl<const WORDS: usize> Extend<usize> for BitSetArray<WORDS> {
@@ -721,61 +785,11 @@ impl<const WORDS: usize> FiniteBitSet for BitSetArray<WORDS> {
     }
 }
 
-impl<const WORDS: usize> ShiftableBitSet for BitSetArray<WORDS> {
-    fn shift_right(&mut self, n: SetElement) {
-        let words_shift = (n / u64::BITS) as usize;
-        let bits_shift = n % u64::BITS;
-
-        //note we rotate left actually because the bit ordering is opposite to the array ordering
-        self.0.rotate_left(words_shift);
-        self.0[WORDS.saturating_sub(words_shift)..].fill(0);
-
-        if bits_shift > 0 {
-            let bits_shift_inverse = u64::BITS - bits_shift;
-            let mut index_1 = 0;
-            loop {
-                self.0[index_1] >>= bits_shift;
-                let index_2 = index_1 + 1;
-                if index_2 < WORDS {
-                    self.0[index_1] |= self.0[index_2] << bits_shift_inverse;
-                    index_1 = index_2;
-                } else {
-                    break;
-                }
-            }
-        }
-    }
-
-    fn shift_left(&mut self, n: SetElement) {
-        let words_shift = (n / u64::BITS) as usize;
-        let bits_shift = n % u64::BITS;
-
-        //note we rotate right actually because the bit ordering is opposite to the array ordering
-        self.0.rotate_right(words_shift);
-        self.0[..words_shift].fill(0);
-
-        if bits_shift > 0 {
-            let bits_shift_inverse = u64::BITS - bits_shift;
-            let mut index_1 = WORDS.saturating_sub(1);
-            loop {
-                self.0[index_1] <<= bits_shift;
-
-                let Some(index_2) = index_1.checked_sub(1) else {
-                    break;
-                };
-                self.0[index_1] |= self.0[index_2] >> bits_shift_inverse;
-                index_1 = index_2;
-            }
-        }
-    }
-}
-
 #[cfg(test)]
 pub mod tests {
     use crate::bit_set_array::BitSetArray;
     use crate::bit_set_trait::BitSet;
     use crate::finite::FiniteBitSet;
-    use crate::shiftable::ShiftableBitSet;
     use std::collections::BTreeSet;
 
     #[test]
@@ -1760,14 +1774,14 @@ pub mod tests {
 
     #[test]
     fn test_shift_right() {
-        let mut set = BitSetArray::<4>::from_fn(|x| x % 3 == 0);
-        let expected = BitSetArray::<4>::from_fn(|x| x % 3 == 1 && x < 128);
+        let mut set = BitSetArray::<8>::from_fn(|x| x % 3 == 0);
+        let expected = BitSetArray::<8>::from_fn(|x| x % 3 == 1 && x < 384);
 
         set.shift_right(128);
 
         assert_eq!(set, expected);
 
-        let mut set2 = BitSetArray::<4>::from_fn(|x| x % 3 == 0);
+        let mut set2 = BitSetArray::<8>::from_fn(|x| x % 3 == 0);
 
         //should be the same as before, just in two separate shifts
         set2.shift_right(120);
@@ -1778,14 +1792,14 @@ pub mod tests {
 
     #[test]
     fn test_shift_left() {
-        let mut set = BitSetArray::<4>::from_fn(|x| x % 3 == 0);
-        let expected = BitSetArray::<4>::from_fn(|x| x % 3 == 2 && x >= 128);
+        let mut set = BitSetArray::<8>::from_fn(|x| x % 3 == 0);
+        let expected = BitSetArray::<8>::from_fn(|x| x % 3 == 2 && x >= 128);
 
         set.shift_left(128);
 
         assert_eq!(set, expected);
 
-        let mut set2 = BitSetArray::<4>::from_fn(|x| x % 3 == 0);
+        let mut set2 = BitSetArray::<8>::from_fn(|x| x % 3 == 0);
 
         //should be the same as before, just in two separate shifts
         set2.shift_left(120);

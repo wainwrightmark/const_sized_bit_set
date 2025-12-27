@@ -361,6 +361,14 @@ macro_rules! define_bit_set_n {
             pub const fn trailing_ones_const(&self) -> u32 {
                 self.0.trailing_ones()
             }
+
+            pub const fn shift_right_const(&mut self, n: SetElement) {
+                self.0 >>= n
+            }
+
+            pub const fn shift_left_const(&mut self, n: SetElement) {
+                self.0 <<= n
+            }
         }
 
         impl Extend<SetElement> for $name {
