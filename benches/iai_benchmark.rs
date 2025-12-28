@@ -112,6 +112,31 @@ fn create_from_fn() -> BitSetArray<4> {
     BitSetArray::from_fn(|x| x % black_box(3) == 0)
 }
 
+#[library_benchmark]
+#[bench::evens(setup=array_of_evens)]
+fn swap_bits_arr(mut arr: BitSetArray::<2>) -> BitSetArray<2>{
+    arr.swap_bits_const(12, 111);
+    arr.swap_bits_const(11, 22);
+    arr
+}
+
+
+fn array_of_evens()-> BitSetArray<2>{
+    BitSetArray::from_fn(|x| x%2 == 0)
+}
+
+#[library_benchmark]
+#[bench::evens(setup=vec_of_evens)]
+fn swap_bits_vec(mut vec: BitSetVec) -> BitSetVec{
+    vec.swap_bits(11, 111);
+    vec.swap_bits(11, 22);
+    vec
+}
+
+fn vec_of_evens()-> BitSetVec{
+    BitSetVec::from_fn(128,|x| x%2 == 0)
+}
+
 library_benchmark_group!(
     name = sum_elements;
     benchmarks = sum_all_elements_with_sum, sum_all_elements_next, sum_all_elements_next_back, sum_all_elements_fold, sum_all_elements_rfold
@@ -132,8 +157,16 @@ library_benchmark_group!(
     benchmarks = create_from_fn
 );
 
+
+library_benchmark_group!(
+    name=swap_bits;
+    benchmarks=swap_bits_arr, swap_bits_vec
+);
+
 main!(
-    library_benchmark_groups = sum_elements,
+    library_benchmark_groups =
+    swap_bits,
+     sum_elements,
     subset,
     from_fn,
     nth

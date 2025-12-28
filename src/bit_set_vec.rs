@@ -1,7 +1,7 @@
 use crate::collect_into_bit_set::CollectIntoBitSet;
 use crate::prelude::BitSet;
 use crate::slice_iter::SliceIter;
-use crate::{BitSet64, SetElement};
+use crate::{BitSet64, SetElement, mutate_inner};
 use core::fmt::{Debug, Write};
 use core::iter::FusedIterator;
 #[cfg(any(test, feature = "serde"))]
@@ -67,7 +67,7 @@ impl BitSetVec {
             .enumerate()
     }
     #[inline]
-    pub (crate) fn get_or_create_word_n(&mut self, word_index: usize) -> &mut u64 {
+    pub(crate) fn get_or_create_word_n(&mut self, word_index: usize) -> &mut u64 {
         if let Some(diff) = (word_index + 1).checked_sub(self.0.len()) {
             self.0.extend(std::iter::repeat_n(0, diff));
         }
@@ -96,8 +96,8 @@ impl BitSetVec {
     }
 
     #[inline]
-    fn tidy_end(&mut self){
-        let zeros_at_end = self.0.iter().rev().take_while(|&&x|x == 0).count();
+    fn tidy_end(&mut self) {
+        let zeros_at_end = self.0.iter().rev().take_while(|&&x| x == 0).count();
         self.0.truncate(self.0.len() - zeros_at_end);
     }
 }
@@ -190,17 +190,22 @@ impl BitSet for BitSetVec {
 
     fn iter(
         &self,
-    ) -> impl Clone + FusedIterator<Item = SetElement> + DoubleEndedIterator + ExactSizeIterator + CollectIntoBitSet<BitSetVec>
-    {
+    ) -> impl Clone
+    + FusedIterator<Item = SetElement>
+    + DoubleEndedIterator
+    + ExactSizeIterator
+    + CollectIntoBitSet<BitSetVec> {
         SliceIter::new(&self.0)
     }
 
+    #[inline]
     fn insert(&mut self, element: SetElement) -> bool {
         let (word_index, shift) = Self::to_word_and_shift(element);
         let word = self.get_or_create_word_n(word_index);
         crate::mutate_inner(word, |s| s.insert_const(shift))
     }
 
+    #[inline]
     fn remove(&mut self, element: SetElement) -> bool {
         let (word_index, shift) = Self::to_word_and_shift(element);
         match self.0.get_mut(word_index) {
@@ -219,14 +224,23 @@ impl BitSet for BitSetVec {
         *word & mask != 0
     }
 
+    #[inline]
     fn swap_bits(&mut self, i: u32, j: u32) {
-        //todo improve performance???
-        let i_bit = self.contains(i);
-        let j_bit = self.contains(j);
-        self.set_bit(i, j_bit);
-        self.set_bit(j, i_bit);
-    }
+        let (i_word_index, i_shift) = Self::to_word_and_shift(i);
+        let (j_word_index, j_shift) = Self::to_word_and_shift(j);
 
+        if i_word_index == j_word_index {            
+            let word = self.get_or_create_word_n(i_word_index);
+            mutate_inner(word, |x|x.swap_bits_const(i_shift, j_shift));
+        } else {
+            let i_word = *self.get_or_create_word_n(i_word_index);
+            let j_word = *self.get_or_create_word_n(j_word_index);
+            let bit = ((i_word >> i_shift) ^ (j_word >> j_shift)) & 1;
+
+            self.0[i_word_index] = i_word ^ bit << i_shift;
+            self.0[j_word_index] = j_word ^ bit << j_shift;
+        }
+    }
     fn is_subset(&self, rhs: &Self) -> bool {
         for (word_index, set) in self.enumerate_sets().rev() {
             if set.is_empty() {
@@ -447,10 +461,12 @@ impl BitSet for BitSetVec {
     fn shift_left(&mut self, n: SetElement) {
         let (words_shift, bits_shift) = Self::to_word_and_shift(n);
 
-        self.0.extend(std::iter::repeat_n(0, words_shift + (if bits_shift == 0 {0} else{1})));
+        self.0.extend(std::iter::repeat_n(
+            0,
+            words_shift + (if bits_shift == 0 { 0 } else { 1 }),
+        ));
         //note we rotate right actually because the bit ordering is opposite to the array ordering
         self.0.rotate_right(words_shift);
-        
 
         if bits_shift > 0 {
             let bits_shift_inverse = u64::BITS - bits_shift;
@@ -467,7 +483,6 @@ impl BitSet for BitSetVec {
         }
         self.tidy_end();
     }
-
 }
 
 impl Extend<usize> for BitSetVec {

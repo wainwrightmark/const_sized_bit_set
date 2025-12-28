@@ -239,11 +239,36 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
 
     #[inline]
     pub const fn swap_bits_const(&mut self, i: u32, j: u32) {
-        //todo improve performance???
-        let i_bit = self.contains_const(i);
-        let j_bit = self.contains_const(j);
-        self.set_bit(i, j_bit);
-        self.set_bit(j, i_bit);
+        let (i_word_index, i_shift) = Self::to_word_and_shift(i);
+        let (j_word_index, j_shift) = Self::to_word_and_shift(j);
+
+        if i_word_index == j_word_index {
+            if i_word_index >= WORDS {
+                debug_assert!(false, "Index out of range");
+                return;
+            }
+            let word = self.0[i_word_index];
+            let mut bs = BitSet64::from_inner_const(word);
+            bs.swap_bits_const(i_shift, j_shift);
+            self.0[i_word_index] = bs.into_inner_const();
+        } else {
+            if i_word_index >= WORDS {
+                debug_assert!(false, "Index out of range");
+                return;
+            }
+            if j_word_index >= WORDS {
+                debug_assert!(false, "Index out of range");
+                return;
+            }
+
+            let i_word = self.0[i_word_index];
+            let j_word = self.0[j_word_index];
+
+            let bit = ((i_word >> i_shift) ^ (j_word >> j_shift)) & 1;
+
+            self.0[i_word_index] = i_word ^ (bit << i_shift);
+            self.0[j_word_index] = j_word ^ (bit << j_shift);
+        }
     }
 
     /// PANICS if value is out of range
