@@ -1,6 +1,6 @@
 use core::iter::FusedIterator;
 
-use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, SetElement};
+use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, SetElement, collect_into_bit_set::CollectIntoBitSet};
 
 pub trait BitSet: Sized {
     type Inner;
@@ -32,7 +32,7 @@ pub trait BitSet: Sized {
 
     fn iter(
         &self,
-    ) -> impl Clone + FusedIterator<Item = SetElement> + DoubleEndedIterator + ExactSizeIterator;
+    ) -> impl Clone + FusedIterator<Item = SetElement> + DoubleEndedIterator + ExactSizeIterator + CollectIntoBitSet<Self>;
 
     /// Sets the `element` to `bit`.
     /// Returns whether the element was changed
@@ -282,11 +282,7 @@ pub trait BitSet: Sized {
             if let Some(r) = n_c_k.try_decrement_n() {
                 n_c_k = r;
             } else {
-                //todo do union here
-                iter.fold(&mut new_set, |acc, x| {
-                    acc.insert(x);
-                    acc
-                });
+                iter.collect_into_bit_set(&mut new_set);
 
                 return new_set;
             }
@@ -422,7 +418,7 @@ macro_rules! impl_bit_set_trait_methods {
 
         fn iter(
             &self,
-        ) -> impl Clone + FusedIterator<Item = SetElement> + DoubleEndedIterator + ExactSizeIterator
+        ) -> impl Clone + FusedIterator<Item = SetElement> + DoubleEndedIterator + ExactSizeIterator + CollectIntoBitSet<Self>
         {
             self.iter_const()
         }

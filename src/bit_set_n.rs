@@ -254,7 +254,7 @@ macro_rules! define_bit_set_n {
                 }
                 let element = (Self::CAPACITY - 1) - self.0.leading_zeros();
 
-                self.0 &= !(1 << element); //todo xor here?
+                self.0 ^= (1 << element);
                 return Some(element);
             }
 

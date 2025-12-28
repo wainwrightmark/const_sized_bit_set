@@ -14,6 +14,7 @@ pub mod n_choose_k;
 pub mod set_size_n_iter;
 pub mod slice_iter;
 pub mod subset_iter;
+pub mod collect_into_bit_set;
 
 pub type SetElement = u32;
 

@@ -1,9 +1,15 @@
 use core::iter::FusedIterator;
 
-use crate::{SetElement, finite::FiniteBitSet, prelude::BitSet};
+use crate::{SetElement, collect_into_bit_set::CollectIntoBitSet, finite::FiniteBitSet, prelude::BitSet};
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct BitSetIterator<Inner: BitSet + FiniteBitSet>(Inner);
+
+impl<Inner: BitSet + FiniteBitSet> CollectIntoBitSet<Inner> for BitSetIterator<Inner> {
+    fn collect_into_bit_set(self, set: &mut Inner) {
+        set.union_with(&self.0);
+    }
+}
 
 impl<Inner: BitSet + FiniteBitSet> BitSetIterator<Inner> {
     pub const fn new(inner: Inner) -> Self {

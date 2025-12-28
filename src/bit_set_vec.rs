@@ -1,3 +1,4 @@
+use crate::collect_into_bit_set::CollectIntoBitSet;
 use crate::prelude::BitSet;
 use crate::slice_iter::SliceIter;
 use crate::{BitSet64, SetElement};
@@ -66,7 +67,7 @@ impl BitSetVec {
             .enumerate()
     }
     #[inline]
-    fn get_or_create_word_n(&mut self, word_index: usize) -> &mut u64 {
+    pub (crate) fn get_or_create_word_n(&mut self, word_index: usize) -> &mut u64 {
         if let Some(diff) = (word_index + 1).checked_sub(self.0.len()) {
             self.0.extend(std::iter::repeat_n(0, diff));
         }
@@ -189,7 +190,7 @@ impl BitSet for BitSetVec {
 
     fn iter(
         &self,
-    ) -> impl Clone + FusedIterator<Item = SetElement> + DoubleEndedIterator + ExactSizeIterator
+    ) -> impl Clone + FusedIterator<Item = SetElement> + DoubleEndedIterator + ExactSizeIterator + CollectIntoBitSet<BitSetVec>
     {
         SliceIter::new(&self.0)
     }
