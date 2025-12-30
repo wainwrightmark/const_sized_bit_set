@@ -131,7 +131,7 @@ impl BitSet for BitSetVec {
 
     fn from_first_n(n: u32) -> Self {
         let (full_words, extra_elements) = Self::to_word_and_shift(n);
-        let mut inner = Vec::with_capacity(full_words + if extra_elements == 0 { 0 } else { 1 });
+        let mut inner = Vec::with_capacity(full_words + usize::from(extra_elements != 0));
         let mut i = 0;
         while i < full_words {
             inner.push(u64::MAX);
@@ -151,22 +151,17 @@ impl BitSet for BitSetVec {
     }
 
     fn first(&self) -> Option<SetElement> {
-        self.enumerate_sets()
-            .filter_map(|(word_index, set)| {
-                set.first_const()
-                    .map(|x| Self::to_full_set_element(x, word_index))
-            })
-            .next()
+        self.enumerate_sets().find_map(|(word_index, set)| {
+            set.first_const()
+                .map(|x| Self::to_full_set_element(x, word_index))
+        })
     }
 
     fn last(&self) -> Option<SetElement> {
-        self.enumerate_sets()
-            .rev()
-            .filter_map(|(word_index, set)| {
-                set.last_const()
-                    .map(|x| Self::to_full_set_element(x, word_index))
-            })
-            .next()
+        self.enumerate_sets().rev().find_map(|(word_index, set)| {
+            set.last_const()
+                .map(|x| Self::to_full_set_element(x, word_index))
+        })
     }
 
     fn pop(&mut self) -> Option<SetElement> {
@@ -220,7 +215,7 @@ impl BitSet for BitSetVec {
         let mask = 1u64 << shift;
 
         let word = self.get_or_create_word_n(word);
-        *word = *word ^ mask;
+        *word ^= mask;
         *word & mask != 0
     }
 
@@ -229,9 +224,9 @@ impl BitSet for BitSetVec {
         let (i_word_index, i_shift) = Self::to_word_and_shift(i);
         let (j_word_index, j_shift) = Self::to_word_and_shift(j);
 
-        if i_word_index == j_word_index {            
+        if i_word_index == j_word_index {
             let word = self.get_or_create_word_n(i_word_index);
-            mutate_inner(word, |x|x.swap_bits_const(i_shift, j_shift));
+            mutate_inner(word, |x| x.swap_bits_const(i_shift, j_shift));
         } else {
             let i_word = *self.get_or_create_word_n(i_word_index);
             let j_word = *self.get_or_create_word_n(j_word_index);
@@ -245,7 +240,7 @@ impl BitSet for BitSetVec {
         for (word_index, set) in self.enumerate_sets().rev() {
             if set.is_empty() {
                 continue;
-            };
+            }
 
             match rhs.try_get_word_set(word_index) {
                 Some(rhs_set) => {
@@ -325,9 +320,8 @@ impl BitSet for BitSetVec {
             if wi == word_index {
                 total += set.count_lesser_elements(shift);
                 return total;
-            } else {
-                total += set.count();
             }
+            total += set.count();
         }
         total
     }
@@ -360,17 +354,16 @@ impl BitSet for BitSetVec {
         if let Some(x) =
             BitSet64::from_inner_const(self.0[word]).smallest_element_greater_than_const(e)
         {
-            return Some(x + (word as u32 * u64::BITS));
+            return Some(Self::to_full_set_element(x, word));
         }
         word += 1;
 
         while word < self.0.len() {
             let a = BitSet64::from_inner_const(self.0[word]);
             if let Some(x) = a.first_const() {
-                return Some(x + (word as u32 * u64::BITS));
-            } else {
-                word += 1;
+                return Some(Self::to_full_set_element(x, word));
             }
+            word += 1;
         }
         None
     }
@@ -384,7 +377,7 @@ impl BitSet for BitSetVec {
 
         if let Some(x) = BitSet64::from_inner_const(self.0[word]).largest_element_less_than_const(e)
         {
-            return Some(x + (word as u32 * u64::BITS));
+            return Some(Self::to_full_set_element(x, word));
         }
 
         match word.checked_sub(1) {
@@ -395,7 +388,7 @@ impl BitSet for BitSetVec {
         loop {
             let a = BitSet64::from_inner_const(self.0[word]);
             if let Some(x) = a.last_const() {
-                return Some(x + (word as u32 * u64::BITS));
+                return Some(Self::to_full_set_element(x, word));
             }
 
             match word.checked_sub(1) {
@@ -422,9 +415,9 @@ impl BitSet for BitSetVec {
     where
         F: FnMut(&SetElement) -> bool,
     {
-        let mut word_index = 0;
-        while let Some(word) = self.0.get_mut(word_index) {
-            let offset = word_index as u32 * WORD_BITS;
+        let mut word_index: u32 = 0;
+        while let Some(word) = self.0.get_mut(word_index as usize) {
+            let offset = word_index * WORD_BITS;
             for element_index in BitSet64::from_inner_const(*word).iter_const() {
                 if !f(&(element_index + offset)) {
                     crate::mutate_inner(word, |w| w.remove_const(element_index));
@@ -463,7 +456,7 @@ impl BitSet for BitSetVec {
 
         self.0.extend(std::iter::repeat_n(
             0,
-            words_shift + (if bits_shift == 0 { 0 } else { 1 }),
+            words_shift + usize::from(bits_shift != 0),
         ));
         //note we rotate right actually because the bit ordering is opposite to the array ordering
         self.0.rotate_right(words_shift);
@@ -486,6 +479,7 @@ impl BitSet for BitSetVec {
 }
 
 impl Extend<usize> for BitSetVec {
+    #[allow(clippy::cast_possible_truncation)]
     fn extend<T: IntoIterator<Item = usize>>(&mut self, iter: T) {
         for v in iter {
             self.insert(v as u32);
@@ -503,6 +497,7 @@ impl Extend<SetElement> for BitSetVec {
 
 impl FromIterator<usize> for BitSetVec {
     #[inline]
+    #[allow(clippy::cast_possible_truncation)]
     fn from_iter<T: IntoIterator<Item = usize>>(iter: T) -> Self {
         iter.into_iter()
             .fold(Self::default(), |acc, v| acc.with_inserted(v as u32))

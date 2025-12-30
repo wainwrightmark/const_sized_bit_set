@@ -73,19 +73,19 @@ impl<'a> SliceIter<'a> {
 
     pub const fn next_const(&mut self) -> Option<SetElement> {
         loop {
-            match {
+            let res = {
                 let inner: &mut u64 = &mut self.first_chunk;
                 let f = super::bit_set_n::BitSet64::pop_const;
                 let mut set = BitSet64::from_inner_const(*inner);
                 let result = f(&mut set);
                 *inner = set.into_inner_const();
                 result
-            } {
+            }; match res {
                 Some(element) => {
                     return Some(first_chunk_bit_to_element(element, self.elements_offset));
                 }
                 None => {
-                    if let None = self.advance_first_chunk() {
+                    if self.advance_first_chunk().is_none() {
                         return None;
                     }
                 }
@@ -393,7 +393,7 @@ impl DoubleEndedIterator for SliceIter<'_> {
     }
 }
 
-impl<'a, const WORDS: usize> CollectIntoBitSet<BitSetArray<WORDS>> for SliceIter<'a> {
+impl<const WORDS: usize> CollectIntoBitSet<BitSetArray<WORDS>> for SliceIter<'_> {
     fn collect_into_bit_set(self, set: &mut BitSetArray<WORDS>) {
         let mut eo = self.elements_offset;
         for chunk in core::iter::once(self.first_chunk)
@@ -411,7 +411,7 @@ impl<'a, const WORDS: usize> CollectIntoBitSet<BitSetArray<WORDS>> for SliceIter
 }
 
 #[cfg(any(test, feature = "std"))]
-impl<'a> CollectIntoBitSet<crate::bit_set_vec::BitSetVec> for SliceIter<'a> {
+impl CollectIntoBitSet<crate::bit_set_vec::BitSetVec> for SliceIter<'_> {
     fn collect_into_bit_set(self, set: &mut crate::bit_set_vec::BitSetVec) {
         let mut eo = self.elements_offset;
         for chunk in core::iter::once(self.first_chunk)

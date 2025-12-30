@@ -164,7 +164,7 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
     }
 
     #[must_use]
-    pub const fn iter_const<'a>(&'a self) -> SliceIter<'a> {
+    pub const fn iter_const(&self) -> SliceIter<'_> {
         SliceIter::new(&self.0)
     }
 
