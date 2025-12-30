@@ -300,15 +300,15 @@ macro_rules! define_bit_set_n {
 
                 let mut chunk_size = Self::CAPACITY / 2;
 
-                //todo test a branchless version of this
+                // Note I have tested a branchless version of this, but it seems slower
                 loop {
-                    let r = remaining >> chunk_size;
+                    let r = remaining.unbounded_shr(chunk_size);
                     if r.count_ones() == desired_ones {
                         return Some(shifted_away + chunk_size + r.trailing_zeros());
                     }
                     let cmp = (r.count_ones() > desired_ones) as u32;
                     shifted_away += cmp * chunk_size;
-                    remaining >>= chunk_size * cmp;
+                    remaining = remaining.unbounded_shr(chunk_size * cmp);
                     chunk_size /= 2;
                 }
             }
@@ -589,6 +589,22 @@ mod tests {
         assert_eq!(BitSet8::ALL.nth_const(1), Some(1));
         assert_eq!(BitSet8::ALL.nth_const(7), Some(7));
         assert_eq!(BitSet8::ALL.nth_const(8), None);
+        
+        
+        assert_eq!(BitSet64::EMPTY.nth_const(0), None);
+        assert_eq!(BitSet64::EMPTY.nth_const(1), None);
+
+        assert_eq!(BitSet64::from_inner(0b01010101).nth_const(0), Some(0));
+        assert_eq!(BitSet64::from_inner(0b01010101).nth_const(1), Some(2));
+        assert_eq!(BitSet64::from_inner(0b01010101).nth_const(2), Some(4));
+        assert_eq!(BitSet64::from_inner(0b01010101).nth_const(3), Some(6));
+        assert_eq!(BitSet64::from_inner(0b01010101).nth_const(4), None);
+
+        assert_eq!(BitSet64::ALL.nth_const(0), Some(0));
+        assert_eq!(BitSet64::ALL.nth_const(1), Some(1));
+        assert_eq!(BitSet64::ALL.nth_const(7), Some(7));
+        assert_eq!(BitSet64::ALL.nth_const(63), Some(63));
+        assert_eq!(BitSet64::ALL.nth_const(64), None);
     }
     #[test]
     fn test_count_lesser_elements() {

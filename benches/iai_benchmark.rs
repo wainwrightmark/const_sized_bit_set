@@ -17,6 +17,18 @@ const HALF_EMPTY_SET: BitSetArray<4> = BitSetArray::from_inner_const(
     [0b101010101010101010101010101010101010101010101010101010101010101; 4],
 );
 
+/// Guaranteed to be random
+const RANDOM_BITSET64: BitSet64 = BitSet64::from_inner_const(0b1001000101101011101011011011011010100110101011100001000100100001);
+
+#[library_benchmark]
+#[bench::random_0(RANDOM_BITSET64, 0)]
+#[bench::random_32(RANDOM_BITSET64, 32)]
+#[bench::random_17(RANDOM_BITSET64, 17)]
+#[bench::random_49(RANDOM_BITSET64, 49)]
+fn bit_set_nth(set: BitSet64, n: u32)-> Option<u32>{
+    set.nth_const(n)
+}
+
 #[library_benchmark]
 #[bench::full(FULL_SET)]
 #[bench::half(HALF_EMPTY_SET)]
@@ -144,7 +156,7 @@ library_benchmark_group!(
 
 library_benchmark_group!(
     name = nth;
-    benchmarks = nth_forward, nth_back
+    benchmarks = bit_set_nth, nth_forward, nth_back
 );
 
 library_benchmark_group!(
