@@ -57,8 +57,8 @@ pub trait BitSet: Sized {
     /// Returns whether the element was inserted (it was not already present)
     fn insert(&mut self, element: SetElement) -> bool;
 
-    /// Toggle the value of an element.
-    /// Returns the new value.
+    /// Toggle the presence of an element.
+    /// Returns whether the element is now present.
     fn toggle(&mut self, element: SetElement) -> bool;
 
     #[must_use]

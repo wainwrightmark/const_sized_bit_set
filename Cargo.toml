@@ -34,8 +34,10 @@ serde = ["dep:serde", "dep:serde_arrays"]
 
 [[bench]]
 name = "criterion_benchmark"
+required-features = ["std"]
 harness = false
 
 [[bench]]
 name = "iai_benchmark"
+required-features = ["std"]
 harness = false

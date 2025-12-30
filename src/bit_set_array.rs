@@ -126,8 +126,6 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
         self.0 = Self::EMPTY.0;
     }
 
-    //todo rename the arguments of all these functions - use Element: SetElement
-
     /// Create a set of the elements 0..n
     #[must_use]
     #[inline]
@@ -182,14 +180,14 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
         }
     }
 
-    /// Adds `value` to the set.
+    /// Adds `element` to the set.
     ///
-    /// Returns whether `value` was newly inserted.
+    /// Returns whether `element` was newly inserted.
     ///
-    /// PANICS if `value` is out of range
+    /// PANICS if `element` is out of range
     #[inline]
-    pub const fn insert_const(&mut self, value: u32) -> bool {
-        let (word, shift) = Self::to_word_and_shift(value);
+    pub const fn insert_const(&mut self, element: SetElement) -> bool {
+        let (word, shift) = Self::to_word_and_shift(element);
         let mask = 1u64 << shift;
         let r = self.0[word] & mask == 0;
 
@@ -197,10 +195,10 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
         r
     }
 
-    /// Toggle the value of an element.
-    /// Returns the new value.
+    /// Toggle the presence of an element.
+    /// Returns whether the element is now present.
     ///
-    /// PANICS if `value` is out of range
+    /// PANICS if `element` is out of range
     #[inline]
     pub const fn toggle_const(&mut self, element: SetElement) -> bool {
         let (word, shift) = Self::to_word_and_shift(element);
@@ -210,13 +208,13 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
         self.0[word] & mask != 0
     }
 
-    /// If the set contains `value`, removes it from the set.
-    /// Returns whether such an element was present.
+    /// If the set contains `element`, remove it from the set.
+    /// Returns the element was present.
     ///
-    /// PANICS if `value` is out of range
+    /// PANICS if `element` is out of range
     #[inline]
-    pub const fn remove_const(&mut self, value: u32) -> bool {
-        let (word, shift) = Self::to_word_and_shift(value);
+    pub const fn remove_const(&mut self, element: SetElement) -> bool {
+        let (word, shift) = Self::to_word_and_shift(element);
         let mask = 1u64 << shift;
         let r = self.0[word] & mask != 0;
 
@@ -271,18 +269,18 @@ impl<const WORDS: usize> BitSetArray<WORDS> {
         }
     }
 
-    /// PANICS if value is out of range
+    /// PANICS if `element` is out of range
     #[must_use]
     #[inline]
-    pub const fn with_inserted(&self, value: u32) -> Self {
-        let (word, shift) = Self::to_word_and_shift(value);
+    pub const fn with_inserted(&self, element: SetElement) -> Self {
+        let (word, shift) = Self::to_word_and_shift(element);
         let mut arr = self.0;
         arr[word] = self.0[word] | (1u64 << shift);
 
         Self(arr)
     }
 
-    /// PANICS if value is out of range
+    /// PANICS if `element` is out of range
     #[must_use]
     #[inline]
     pub const fn with_removed(&self, element: SetElement) -> Self {
