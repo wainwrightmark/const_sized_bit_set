@@ -14,14 +14,13 @@ Possible header types:
 ## v0.4.0 (2025-12-18)
 
 ### Breaking Changes
-
-- `BitSetArray` now implements `BitSetTrait`. Some of it's methods have been renamed and some now accept/return `u32` instead of `usize`
-- Minimum supported rust version is now 1.85 (for 2024 edition)
+- `BitSetTrait` renamed to `BitSet`
+- `BitSetArray` now implements `BitSet`. Some of it's methods have been renamed and some now accept/return `u32` instead of `usize`
+- Minimum supported rust version is now 1.92
 
 ### Features
-- Added `BitMap64`
-- impl `BitSetShiftable` for `BitSetArray`
-- Added `smallest_element_greater_than` and `largest_element_less_than`
+- Added `BitSetVec`
+- Added various functions
 
 ## v0.3.0 (2024-04-12)
 
