@@ -1,6 +1,6 @@
-use core::fmt::{self, Binary, LowerHex, UpperHex};
-
 use crate::SetElement;
+use crate::iterator::BitSetIterator;
+use core::fmt::{self, Binary, LowerHex, UpperHex};
 #[cfg(any(test, feature = "serde"))]
 use serde::{Deserialize, Serialize};
 
@@ -36,8 +36,14 @@ macro_rules! define_bit_set_n {
             /// Returns the number of elements in the set
             #[must_use]
             #[inline]
-            #[doc(alias = "count")]
             pub const fn count_const(&self) -> SetElement {
+                self.len_const()
+            }
+
+            /// Returns the number of elements in the set
+            #[must_use]
+            #[inline]
+            pub const fn len_const(&self) -> SetElement {
                 self.0.count_ones()
             }
 
@@ -353,8 +359,8 @@ macro_rules! define_bit_set_n {
             }
 
             #[must_use]
-            pub const fn iter_const(&self) -> crate::iterator::BitSetIterator<Self> {
-                crate::iterator::BitSetIterator::new(*self)
+            pub const fn iter_const(&self) -> BitSetIterator<Self> {
+                BitSetIterator::new(*self)
             }
 
             #[must_use]
@@ -384,6 +390,15 @@ macro_rules! define_bit_set_n {
                 let mut set = Self::default();
                 set.extend(iter);
                 set
+            }
+        }
+
+        impl IntoIterator for $name {
+            type Item = SetElement;
+            type IntoIter = BitSetIterator<Self>;
+
+            fn into_iter(self) -> Self::IntoIter {
+                BitSetIterator::new(self)
             }
         }
     };
@@ -451,10 +466,7 @@ impl_binary_and_hex!(BitSet128);
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        BitSet8, BitSet32, BitSet64, BitSet128, bit_set_n::BitSet16, bit_set_trait::BitSet,
-        finite::FiniteBitSet,
-    };
+    use crate::prelude::*;
 
     #[test]
     fn test_serde_empty() {
@@ -589,8 +601,7 @@ mod tests {
         assert_eq!(BitSet8::ALL.nth_const(1), Some(1));
         assert_eq!(BitSet8::ALL.nth_const(7), Some(7));
         assert_eq!(BitSet8::ALL.nth_const(8), None);
-        
-        
+
         assert_eq!(BitSet64::EMPTY.nth_const(0), None);
         assert_eq!(BitSet64::EMPTY.nth_const(1), None);
 

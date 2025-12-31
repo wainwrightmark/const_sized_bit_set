@@ -60,7 +60,7 @@ impl<T: BitSet + FiniteBitSet + Clone> SetSizeNIter<T> {
 #[cfg(test)]
 mod tests {
     use super::SetSizeNIter;
-    use crate::{BitSet8, bit_set_trait::BitSet};
+    use crate::prelude::*;
     use std::vec;
 
     #[test]

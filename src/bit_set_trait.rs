@@ -1,6 +1,5 @@
 use core::iter::FusedIterator;
-
-use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, SetElement, collect_into_bit_set::CollectIntoBitSet};
+use crate::prelude::*;
 
 pub trait BitSet: Sized {
     type Inner;

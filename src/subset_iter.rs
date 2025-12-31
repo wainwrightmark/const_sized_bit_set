@@ -202,7 +202,7 @@ impl<T: BitSet + Clone> Iterator for SubsetIter<T> {
 #[cfg(test)]
 mod tests {
 
-    use crate::{BitSet8, bit_set_trait::BitSet};
+    use crate::prelude::*;
 
     #[test]
     pub fn test_subsets_size_8() {

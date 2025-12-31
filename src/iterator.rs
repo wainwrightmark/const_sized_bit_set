@@ -204,7 +204,7 @@ impl<Inner: BitSet + FiniteBitSet> DoubleEndedIterator for BitSetIterator<Inner>
 
 #[cfg(test)]
 mod tests {
-    use crate::{BitSet16, SetElement, finite::FiniteBitSet, prelude::BitSet};
+    use crate::prelude::*;
 
     #[test]
     fn test_is_sorted() {

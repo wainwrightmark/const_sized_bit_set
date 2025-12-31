@@ -1,7 +1,8 @@
 use crate::collect_into_bit_set::CollectIntoBitSet;
 use crate::prelude::BitSet;
 use crate::slice_iter::SliceIter;
-use crate::{BitSet64, SetElement, mutate_inner};
+use crate::prelude::*;
+use crate::mutate_inner;
 use core::fmt::{Debug, Write};
 use core::iter::FusedIterator;
 #[cfg(any(test, feature = "serde"))]

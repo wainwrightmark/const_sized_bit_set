@@ -1,6 +1,5 @@
-use crate::finite::FiniteBitSet;
+use crate::prelude::*;
 use crate::slice_iter::SliceIter;
-use crate::{BitSet64, SetElement};
 use core::fmt::{Debug, Write};
 #[cfg(any(test, feature = "serde"))]
 use serde::{Deserialize, Serialize};

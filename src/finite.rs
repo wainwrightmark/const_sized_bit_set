@@ -1,4 +1,4 @@
-use crate::{BitSet8, BitSet16, BitSet32, BitSet64, BitSet128, SetElement, bit_set_trait::BitSet};
+use crate::prelude::*;
 
 //A Bitset with a finite capacity
 pub trait FiniteBitSet: BitSet {
