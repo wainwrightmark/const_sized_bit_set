@@ -6,6 +6,7 @@
 pub mod bit_set_array;
 pub mod bit_set_n;
 pub mod bit_set_trait;
+pub mod first_n_bitset;
 #[cfg(any(test, feature = "std"))]
 pub mod bit_set_vec;
 pub mod finite;
@@ -27,6 +28,7 @@ pub mod prelude {
     pub use crate::finite::FiniteBitSet;
     pub use crate::SetElement;
     pub use crate::collect_into_bit_set::CollectIntoBitSet;
+    pub use crate::first_n_bitset::FirstNBitSet;
 }
 
 #[inline]

@@ -11,6 +11,9 @@ Possible header types:
 
 [crates.io]: https://crates.io/crates/const_sized_bit_set
 
+## v0.5.1 (2026-05-05)
+- Added `FirstNBitSet`
+
 ## v0.5.0 (2025-12-31)
 - Reorganized the prelude
 - Added `len_const` to `BitSet8`, `BitSet16` etc.
